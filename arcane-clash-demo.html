@@ -1,0 +1,1070 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Arcane Clash Demo</title>
+  <style>
+    :root {
+      --ink: #172019;
+      --muted: #647067;
+      --paper: #fbfaf5;
+      --panel: #ffffff;
+      --line: #d8d8ce;
+      --flame: #c94f3d;
+      --frost: #4f8fb6;
+      --stone: #7c7468;
+      --storm: #856bb5;
+      --vine: #4f8a57;
+      --gold: #b88728;
+      --shadow: 0 4px 14px rgba(23, 32, 25, 0.08);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--ink);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #f4f3ee;
+    }
+
+    button {
+      font: inherit;
+    }
+
+    .shell {
+      width: min(1040px, calc(100vw - 24px));
+      margin: 0 auto;
+      padding: 14px 0 20px;
+    }
+
+    header {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 12px;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(1.55rem, 3vw, 2.25rem);
+      line-height: 1.05;
+      letter-spacing: 0;
+    }
+
+    .subtitle {
+      max-width: 680px;
+      margin: 4px 0 0;
+      color: #3f4a42;
+      font-size: 0.86rem;
+      line-height: 1.35;
+    }
+
+    .reset {
+      width: 36px;
+      height: 36px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      color: var(--ink);
+      cursor: pointer;
+      box-shadow: none;
+    }
+
+    .reset:hover {
+      border-color: #a9ab9f;
+    }
+
+    .arena {
+      display: grid;
+      grid-template-columns: 210px minmax(0, 1fr) 230px;
+      gap: 10px;
+      align-items: start;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+    }
+
+    .scoreboard {
+      padding: 10px;
+    }
+
+    .meter-row {
+      display: grid;
+      gap: 4px;
+      margin-bottom: 10px;
+    }
+
+    .label-line {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      color: var(--muted);
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    .bar {
+      height: 8px;
+      overflow: hidden;
+      border-radius: 999px;
+      background: #e8e7de;
+      border: 1px solid #d5d5cb;
+    }
+
+    .bar span {
+      display: block;
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #b88728, #d8aa45);
+      transition: width 220ms ease;
+    }
+
+    .bar.score span {
+      background: linear-gradient(90deg, #2d7b67, #77a95b);
+    }
+
+    .history {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      min-height: 28px;
+      margin-top: 5px;
+    }
+
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      min-height: 22px;
+      padding: 3px 7px;
+      border-radius: 999px;
+      color: #fff;
+      font-size: 0.7rem;
+      font-weight: 800;
+    }
+
+    .flame { background: var(--flame); }
+    .frost { background: var(--frost); }
+    .stone { background: var(--stone); }
+    .storm { background: var(--storm); }
+    .vine { background: var(--vine); }
+
+    .duel {
+      min-height: 0;
+      padding: 10px;
+    }
+
+    .battlefield {
+      display: grid;
+      grid-template-columns: 1fr 68px 1fr;
+      gap: 8px;
+      align-items: stretch;
+      min-height: 132px;
+      margin-bottom: 10px;
+    }
+
+    .caster {
+      display: grid;
+      place-items: center;
+      min-height: 132px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fafaf7;
+      text-align: center;
+      padding: 10px;
+    }
+
+    .spell-orb {
+      display: grid;
+      place-items: center;
+      width: 58px;
+      height: 58px;
+      margin: 0 auto 7px;
+      border: 2px solid rgba(255,255,255,0.9);
+      border-radius: 50%;
+      color: #fff;
+      box-shadow: inset 0 -10px 16px rgba(0,0,0,0.18), 0 6px 12px rgba(23,32,25,0.14);
+      font-size: 1.2rem;
+      font-weight: 900;
+      transform: translateZ(0);
+    }
+
+    .unknown {
+      background: #2d332f;
+    }
+
+    .spell-orb.reveal {
+      animation: orbReveal 540ms cubic-bezier(.2, .8, .2, 1);
+    }
+
+    .caster h2 {
+      margin: 0;
+      font-size: 0.68rem;
+      color: var(--muted);
+      text-transform: uppercase;
+    }
+
+    .caster strong {
+      display: block;
+      margin-top: 3px;
+      font-size: 1.05rem;
+      letter-spacing: 0;
+    }
+
+    .versus {
+      display: grid;
+      place-items: center;
+      border-radius: 8px;
+      background: #202821;
+      color: #f7f0d8;
+      font-weight: 900;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .versus::after {
+      content: "";
+      position: absolute;
+      inset: -40%;
+      background: radial-gradient(circle, rgba(241, 200, 107, 0.88), transparent 42%);
+      opacity: 0;
+      transform: scale(0.4);
+      pointer-events: none;
+    }
+
+    .versus.clashing::after {
+      animation: clashFlash 520ms ease-out;
+    }
+
+    .result {
+      min-height: 48px;
+      padding: 9px 10px;
+      margin-bottom: 10px;
+      border-radius: 8px;
+      background: #202821;
+      color: #f9f4df;
+      line-height: 1.35;
+      font-size: 0.86rem;
+    }
+
+    .result.pop {
+      animation: resultPop 360ms ease-out;
+    }
+
+    .result strong {
+      display: block;
+      margin-bottom: 2px;
+      color: #f1c86b;
+      font-size: 0.92rem;
+    }
+
+    .section-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin: 12px 0 6px;
+      color: var(--muted);
+      font-size: 0.68rem;
+      font-weight: 900;
+      text-transform: uppercase;
+    }
+
+    .spell-grid {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 6px;
+    }
+
+    .spell-btn,
+    .power-btn {
+      min-height: 68px;
+      padding: 8px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      color: var(--ink);
+      text-align: left;
+      cursor: pointer;
+      transition: transform 120ms ease, border-color 120ms ease, box-shadow 120ms ease;
+    }
+
+    .spell-btn:hover,
+    .power-btn:hover {
+      border-color: #aeb0a6;
+      box-shadow: 0 4px 10px rgba(23,32,25,0.08);
+    }
+
+    .spell-btn.selected,
+    .power-btn.selected {
+      border-color: #202821;
+      box-shadow: 0 0 0 3px rgba(32,40,33,0.16);
+    }
+
+    .spell-btn .mark {
+      display: inline-grid;
+      place-items: center;
+      width: 24px;
+      height: 24px;
+      margin-bottom: 6px;
+      font-size: 0.74rem;
+      border-radius: 50%;
+      color: #fff;
+      font-weight: 900;
+    }
+
+    .spell-btn strong,
+    .power-btn strong {
+      display: block;
+      font-size: 0.82rem;
+      letter-spacing: 0;
+    }
+
+    .spell-btn small,
+    .power-btn small {
+      display: block;
+      margin-top: 2px;
+      color: var(--muted);
+      font-size: 0.66rem;
+      line-height: 1.25;
+    }
+
+    .power-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 6px;
+    }
+
+    .power-btn {
+      min-height: 62px;
+    }
+
+    .power-btn:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+
+    .cast-row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 8px;
+      align-items: center;
+      margin-top: 10px;
+    }
+
+    .cast {
+      min-height: 40px;
+      border: 0;
+      border-radius: 8px;
+      background: #202821;
+      color: #fff8db;
+      cursor: pointer;
+      font-weight: 900;
+      text-transform: uppercase;
+      font-size: 0.82rem;
+    }
+
+    .cast:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
+    .hint {
+      color: var(--muted);
+      font-size: 0.72rem;
+      line-height: 1.25;
+    }
+
+    .rules {
+      padding: 10px;
+    }
+
+    .rules h2 {
+      margin: 0 0 8px;
+      font-size: 0.92rem;
+    }
+
+    .rule-list {
+      display: grid;
+      gap: 6px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      color: #3f4a42;
+      font-size: 0.76rem;
+      line-height: 1.3;
+    }
+
+    .combo-card {
+      padding: 8px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+    }
+
+    .combo-card strong {
+      display: block;
+      margin-bottom: 4px;
+    }
+
+    .locked {
+      color: var(--muted);
+      opacity: 0.72;
+    }
+
+    @keyframes orbReveal {
+      0% {
+        opacity: 0.62;
+        transform: scale(0.72) rotate(-10deg);
+        filter: brightness(1);
+      }
+      55% {
+        opacity: 1;
+        transform: scale(1.13) rotate(5deg);
+        filter: brightness(1.35);
+      }
+      100% {
+        transform: scale(1) rotate(0);
+        filter: brightness(1);
+      }
+    }
+
+    @keyframes clashFlash {
+      0% {
+        opacity: 0;
+        transform: scale(0.2);
+      }
+      35% {
+        opacity: 0.95;
+        transform: scale(0.9);
+      }
+      100% {
+        opacity: 0;
+        transform: scale(1.45);
+      }
+    }
+
+    @keyframes resultPop {
+      0% {
+        transform: translateY(5px);
+        box-shadow: none;
+      }
+      70% {
+        transform: translateY(-2px);
+        box-shadow: 0 12px 28px rgba(23, 32, 25, 0.18);
+      }
+      100% {
+        transform: translateY(0);
+        box-shadow: none;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .spell-orb.reveal,
+      .versus.clashing::after,
+      .result.pop {
+        animation: none;
+      }
+
+      .spell-btn,
+      .power-btn,
+      .bar span {
+        transition: none;
+      }
+    }
+
+    @media (max-width: 980px) {
+      .arena {
+        grid-template-columns: minmax(0, 1fr) 220px;
+      }
+
+      .duel {
+        min-height: 0;
+        order: 1;
+      }
+
+      .scoreboard {
+        order: 2;
+      }
+
+      .rules {
+        order: 3;
+        grid-column: 1 / -1;
+      }
+
+      .scoreboard {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 10px;
+      }
+    }
+
+    @media (max-width: 680px) {
+      .shell {
+        width: min(100vw - 16px, 1040px);
+        padding-top: 10px;
+      }
+
+      header {
+        grid-template-columns: 1fr auto;
+      }
+
+      .subtitle {
+        display: none;
+      }
+
+      .arena {
+        grid-template-columns: 1fr;
+      }
+
+      .scoreboard {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .battlefield {
+        grid-template-columns: 1fr 48px 1fr;
+        min-height: 112px;
+      }
+
+      .caster {
+        min-height: 112px;
+      }
+
+      .versus {
+        min-height: 0;
+      }
+
+      .spell-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .power-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .cast-row {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 340px) {
+      .scoreboard,
+      .battlefield,
+      .spell-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .versus {
+        min-height: 32px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header>
+      <div>
+        <h1>Arcane Clash</h1>
+        <p class="subtitle">Magic RPS with mana, memory, and risky combo spells.</p>
+      </div>
+      <button class="reset" id="reset" title="Reset match" aria-label="Reset match">R</button>
+    </header>
+
+    <section class="arena">
+      <aside class="panel scoreboard" aria-label="Match status">
+        <div>
+          <div class="meter-row">
+            <div class="label-line"><span>Your score</span><span id="playerScoreText">0 / 7</span></div>
+            <div class="bar score"><span id="playerScoreBar"></span></div>
+          </div>
+          <div class="meter-row">
+            <div class="label-line"><span>Your mana</span><span id="playerManaText">0 / 6</span></div>
+            <div class="bar"><span id="playerManaBar"></span></div>
+          </div>
+          <div class="section-title">Your spell memory</div>
+          <div class="history" id="playerHistory"></div>
+        </div>
+
+        <div>
+          <div class="meter-row">
+            <div class="label-line"><span>Rival score</span><span id="aiScoreText">0 / 7</span></div>
+            <div class="bar score"><span id="aiScoreBar"></span></div>
+          </div>
+          <div class="meter-row">
+            <div class="label-line"><span>Rival mana</span><span id="aiManaText">0 / 6</span></div>
+            <div class="bar"><span id="aiManaBar"></span></div>
+          </div>
+          <div class="section-title">Rival spell memory</div>
+          <div class="history" id="aiHistory"></div>
+        </div>
+      </aside>
+
+      <section class="panel duel" aria-label="Duel controls">
+        <div class="battlefield">
+          <div class="caster">
+            <div>
+              <div class="spell-orb unknown" id="playerOrb">?</div>
+              <h2>You cast</h2>
+              <strong id="playerCast">Choose</strong>
+            </div>
+          </div>
+          <div class="versus">Clash</div>
+          <div class="caster">
+            <div>
+              <div class="spell-orb unknown" id="aiOrb">?</div>
+              <h2>Rival casts</h2>
+              <strong id="aiCast">Hidden</strong>
+            </div>
+          </div>
+        </div>
+
+        <div class="result" id="result">
+          <strong>Ready the circle.</strong>
+          Pick a spell. Combos unlock when your recent spell memory contains their ingredients.
+        </div>
+
+        <div class="section-title"><span>Basic spells</span><span>hidden choice</span></div>
+        <div class="spell-grid" id="spellGrid"></div>
+
+        <div class="section-title"><span>Earned magic</span><span id="comboStatus">no combo ready</span></div>
+        <div class="power-grid" id="powerGrid"></div>
+
+        <div class="cast-row">
+          <button class="cast" id="cast" disabled>Cast spell</button>
+          <div class="hint" id="hint">First to 7 points wins. Losing and tying earn mana, so the behind player gets comeback tools.</div>
+        </div>
+      </section>
+
+      <aside class="panel rules" aria-label="Rules reference">
+        <h2>Rules</h2>
+        <ul class="rule-list">
+          <li><strong>Flame</strong> beats Vine and Frost.</li>
+          <li><strong>Frost</strong> beats Stone and Vine.</li>
+          <li><strong>Stone</strong> beats Storm and Flame.</li>
+          <li><strong>Storm</strong> beats Frost and Flame.</li>
+          <li><strong>Vine</strong> beats Stone and Storm.</li>
+          <li>Win: +1 point. Lose: +1 mana. Tie: both gain +1 mana.</li>
+          <li>Use three different spells in a row to gain +1 mana.</li>
+        </ul>
+
+        <div class="section-title">Combo recipes</div>
+        <div class="rule-list" id="comboList"></div>
+      </aside>
+    </section>
+  </main>
+
+  <script>
+    const SPELLS = [
+      { id: "flame", name: "Flame", mark: "F", beats: ["vine", "frost"], color: "#c94f3d" },
+      { id: "frost", name: "Frost", mark: "I", beats: ["stone", "vine"], color: "#4f8fb6" },
+      { id: "stone", name: "Stone", mark: "S", beats: ["storm", "flame"], color: "#7c7468" },
+      { id: "storm", name: "Storm", mark: "L", beats: ["frost", "flame"], color: "#856bb5" },
+      { id: "vine", name: "Vine", mark: "V", beats: ["stone", "storm"], color: "#4f8a57" }
+    ];
+
+    const COMBOS = [
+      {
+        id: "lightningFire",
+        name: "Lightning Fire",
+        ingredients: ["flame", "storm"],
+        cost: 2,
+        text: "If you win, gain +1 bonus point. If you lose, lose 1 mana.",
+        apply: "overcharge"
+      },
+      {
+        id: "frozenStone",
+        name: "Frozen Stone",
+        ingredients: ["frost", "stone"],
+        cost: 2,
+        text: "If you would lose, turn the loss into a tie.",
+        apply: "ward"
+      },
+      {
+        id: "steamBurst",
+        name: "Steam Burst",
+        ingredients: ["flame", "frost"],
+        cost: 3,
+        text: "After reveal, randomly reroll the rival spell once.",
+        apply: "reroll"
+      },
+      {
+        id: "rootStorm",
+        name: "Root Storm",
+        ingredients: ["vine", "storm"],
+        cost: 3,
+        text: "If the rival casts Stone or Storm, win ties and gain +1 mana.",
+        apply: "prediction"
+      },
+      {
+        id: "thornWall",
+        name: "Thorn Wall",
+        ingredients: ["vine", "stone"],
+        cost: 2,
+        text: "If the rival casts Storm, gain +1 bonus point on a win.",
+        apply: "stormTrap"
+      }
+    ];
+
+    const state = {
+      playerScore: 0,
+      aiScore: 0,
+      playerMana: 0,
+      aiMana: 0,
+      playerHistory: [],
+      aiHistory: [],
+      selectedSpell: null,
+      selectedCombo: null,
+      gameOver: false,
+      lastPlayerCast: null,
+      lastAiCast: null
+    };
+
+    const byId = (id) => document.getElementById(id);
+    const spellById = (id) => SPELLS.find((spell) => spell.id === id);
+    const comboById = (id) => COMBOS.find((combo) => combo.id === id);
+
+    function clampMana(value) {
+      return Math.max(0, Math.min(6, value));
+    }
+
+    function canUseCombo(combo, history, mana) {
+      return combo.ingredients.every((ingredient) => history.includes(ingredient)) && mana >= combo.cost;
+    }
+
+    function resolveWinner(playerSpell, aiSpell) {
+      if (playerSpell.id === aiSpell.id) return "tie";
+      if (playerSpell.beats.includes(aiSpell.id)) return "player";
+      return "ai";
+    }
+
+    function randomSpell() {
+      return SPELLS[Math.floor(Math.random() * SPELLS.length)];
+    }
+
+    function aiPickSpell() {
+      const last = state.playerHistory[state.playerHistory.length - 1];
+      if (last && Math.random() < 0.42) {
+        const counters = SPELLS.filter((spell) => spell.beats.includes(last));
+        return counters[Math.floor(Math.random() * counters.length)];
+      }
+      return randomSpell();
+    }
+
+    function aiPickCombo() {
+      const ready = COMBOS.filter((combo) => canUseCombo(combo, state.aiHistory, state.aiMana));
+      if (!ready.length || Math.random() > 0.36) return null;
+      return ready[Math.floor(Math.random() * ready.length)];
+    }
+
+    function addHistory(target, spellId) {
+      target.push(spellId);
+      while (target.length > 5) target.shift();
+    }
+
+    function varietyBonus(history) {
+      if (history.length < 3) return false;
+      const recent = history.slice(-3);
+      return new Set(recent).size === 3;
+    }
+
+    function orbClasses(orb, spell) {
+      orb.className = "spell-orb " + (spell ? spell.id : "unknown");
+      orb.textContent = spell ? spell.mark : "?";
+      orb.style.background = spell ? spell.color : "";
+    }
+
+    function restartAnimation(element, className) {
+      element.classList.remove(className);
+      void element.offsetWidth;
+      element.classList.add(className);
+    }
+
+    function animateReveal() {
+      restartAnimation(byId("playerOrb"), "reveal");
+      restartAnimation(byId("aiOrb"), "reveal");
+      restartAnimation(document.querySelector(".versus"), "clashing");
+      restartAnimation(byId("result"), "pop");
+    }
+
+    function chip(spellId) {
+      const spell = spellById(spellId);
+      const item = document.createElement("span");
+      item.className = "chip " + spell.id;
+      item.textContent = spell.name;
+      return item;
+    }
+
+    function renderHistory(id, history) {
+      const box = byId(id);
+      box.innerHTML = "";
+      if (!history.length) {
+        const empty = document.createElement("span");
+        empty.className = "hint";
+        empty.textContent = "No spells yet";
+        box.appendChild(empty);
+        return;
+      }
+      history.forEach((spellId) => box.appendChild(chip(spellId)));
+    }
+
+    function renderMeters() {
+      byId("playerScoreText").textContent = state.playerScore + " / 7";
+      byId("aiScoreText").textContent = state.aiScore + " / 7";
+      byId("playerManaText").textContent = state.playerMana + " / 6";
+      byId("aiManaText").textContent = state.aiMana + " / 6";
+      byId("playerScoreBar").style.width = Math.min(100, (state.playerScore / 7) * 100) + "%";
+      byId("aiScoreBar").style.width = Math.min(100, (state.aiScore / 7) * 100) + "%";
+      byId("playerManaBar").style.width = (state.playerMana / 6) * 100 + "%";
+      byId("aiManaBar").style.width = (state.aiMana / 6) * 100 + "%";
+    }
+
+    function renderSpells() {
+      const grid = byId("spellGrid");
+      grid.innerHTML = "";
+      SPELLS.forEach((spell) => {
+        const button = document.createElement("button");
+        button.className = "spell-btn" + (state.selectedSpell === spell.id ? " selected" : "");
+        button.type = "button";
+        button.disabled = state.gameOver;
+        button.innerHTML = `
+          <span class="mark ${spell.id}">${spell.mark}</span>
+          <strong>${spell.name}</strong>
+          <small>Beats ${spell.beats.map((id) => spellById(id).name).join(" and ")}</small>
+        `;
+        button.addEventListener("click", () => {
+          state.selectedSpell = spell.id;
+          render();
+        });
+        grid.appendChild(button);
+      });
+    }
+
+    function renderPowers() {
+      const grid = byId("powerGrid");
+      grid.innerHTML = "";
+      const ready = [];
+
+      COMBOS.forEach((combo) => {
+        const unlocked = combo.ingredients.every((ingredient) => state.playerHistory.includes(ingredient));
+        const affordable = state.playerMana >= combo.cost;
+        if (unlocked && affordable) ready.push(combo);
+        const button = document.createElement("button");
+        button.className = "power-btn" + (state.selectedCombo === combo.id ? " selected" : "");
+        button.type = "button";
+        button.disabled = state.gameOver || !unlocked || !affordable;
+        button.innerHTML = `
+          <strong>${combo.name} - ${combo.cost} mana</strong>
+          <small>${combo.ingredients.map((id) => spellById(id).name).join(" + ")}. ${combo.text}</small>
+        `;
+        button.addEventListener("click", () => {
+          state.selectedCombo = state.selectedCombo === combo.id ? null : combo.id;
+          render();
+        });
+        grid.appendChild(button);
+      });
+
+      byId("comboStatus").textContent = ready.length ? ready.length + " ready" : "no combo ready";
+    }
+
+    function renderComboList() {
+      const list = byId("comboList");
+      list.innerHTML = "";
+      COMBOS.forEach((combo) => {
+        const unlocked = combo.ingredients.every((ingredient) => state.playerHistory.includes(ingredient));
+        const item = document.createElement("div");
+        item.className = "combo-card" + (unlocked ? "" : " locked");
+        item.innerHTML = `
+          <strong>${combo.name}</strong>
+          <span>${combo.ingredients.map((id) => spellById(id).name).join(" + ")}. Cost ${combo.cost}. ${combo.text}</span>
+        `;
+        list.appendChild(item);
+      });
+    }
+
+    function renderCasts() {
+      const playerSpell = state.lastPlayerCast ? spellById(state.lastPlayerCast) : null;
+      const aiSpell = state.lastAiCast ? spellById(state.lastAiCast) : null;
+      orbClasses(byId("playerOrb"), playerSpell);
+      orbClasses(byId("aiOrb"), aiSpell);
+      byId("playerCast").textContent = playerSpell ? playerSpell.name : (state.selectedSpell ? spellById(state.selectedSpell).name : "Choose");
+      byId("aiCast").textContent = aiSpell ? aiSpell.name : "Hidden";
+    }
+
+    function render() {
+      renderMeters();
+      renderHistory("playerHistory", state.playerHistory);
+      renderHistory("aiHistory", state.aiHistory);
+      renderSpells();
+      renderPowers();
+      renderComboList();
+      renderCasts();
+      byId("cast").disabled = state.gameOver || !state.selectedSpell;
+      if (state.selectedCombo && !canUseCombo(comboById(state.selectedCombo), state.playerHistory, state.playerMana)) {
+        state.selectedCombo = null;
+      }
+    }
+
+    function applyCombo(combo, owner, context) {
+      if (!combo) return;
+      if (combo.apply === "reroll") {
+        if (owner === "player") {
+          context.aiSpell = randomSpell();
+          context.notes.push("Steam Burst scrambled the rival spell.");
+        } else {
+          context.playerSpell = randomSpell();
+          context.notes.push("The rival's Steam Burst scrambled your spell.");
+        }
+      }
+    }
+
+    function finalizeCombo(combo, owner, context) {
+      if (!combo) return;
+      const isPlayer = owner === "player";
+      const won = context.winner === owner;
+      const lost = context.winner !== "tie" && context.winner !== owner;
+      const rivalSpell = isPlayer ? context.aiSpell : context.playerSpell;
+
+      if (combo.apply === "ward" && lost) {
+        context.winner = "tie";
+        context.notes.push(combo.name + " turned a loss into a tie.");
+      }
+
+      if (combo.apply === "prediction" && (rivalSpell.id === "stone" || rivalSpell.id === "storm")) {
+        if (context.winner === "tie") {
+          context.winner = owner;
+          context.notes.push(combo.name + " broke the tie.");
+        }
+        if (isPlayer) state.playerMana = clampMana(state.playerMana + 1);
+        else state.aiMana = clampMana(state.aiMana + 1);
+        context.notes.push(combo.name + " returned 1 mana.");
+      }
+
+      if (combo.apply === "overcharge" && won) {
+        context.bonus[owner] += 1;
+        context.notes.push(combo.name + " added a bonus point.");
+      } else if (combo.apply === "overcharge" && lost) {
+        if (isPlayer) state.playerMana = clampMana(state.playerMana - 1);
+        else state.aiMana = clampMana(state.aiMana - 1);
+        context.notes.push(combo.name + " backfired and burned 1 mana.");
+      }
+
+      if (combo.apply === "stormTrap" && won && rivalSpell.id === "storm") {
+        context.bonus[owner] += 1;
+        context.notes.push(combo.name + " trapped Storm for a bonus point.");
+      }
+    }
+
+    function castRound() {
+      if (state.gameOver || !state.selectedSpell) return;
+
+      const playerCombo = state.selectedCombo ? comboById(state.selectedCombo) : null;
+      const aiCombo = aiPickCombo();
+      if (playerCombo) state.playerMana = clampMana(state.playerMana - playerCombo.cost);
+      if (aiCombo) state.aiMana = clampMana(state.aiMana - aiCombo.cost);
+
+      const context = {
+        playerSpell: spellById(state.selectedSpell),
+        aiSpell: aiPickSpell(),
+        winner: "tie",
+        bonus: { player: 0, ai: 0 },
+        notes: []
+      };
+
+      applyCombo(playerCombo, "player", context);
+      applyCombo(aiCombo, "ai", context);
+      context.winner = resolveWinner(context.playerSpell, context.aiSpell);
+      finalizeCombo(playerCombo, "player", context);
+      finalizeCombo(aiCombo, "ai", context);
+
+      if (context.winner === "player") {
+        state.playerScore += 1 + context.bonus.player;
+        state.aiMana = clampMana(state.aiMana + 1);
+      } else if (context.winner === "ai") {
+        state.aiScore += 1 + context.bonus.ai;
+        state.playerMana = clampMana(state.playerMana + 1);
+      } else {
+        state.playerMana = clampMana(state.playerMana + 1);
+        state.aiMana = clampMana(state.aiMana + 1);
+      }
+
+      addHistory(state.playerHistory, context.playerSpell.id);
+      addHistory(state.aiHistory, context.aiSpell.id);
+      if (varietyBonus(state.playerHistory)) {
+        state.playerMana = clampMana(state.playerMana + 1);
+        context.notes.push("Your three-spell variety earned 1 mana.");
+      }
+      if (varietyBonus(state.aiHistory)) {
+        state.aiMana = clampMana(state.aiMana + 1);
+        context.notes.push("The rival's three-spell variety earned 1 mana.");
+      }
+
+      state.lastPlayerCast = context.playerSpell.id;
+      state.lastAiCast = context.aiSpell.id;
+      state.selectedCombo = null;
+
+      const headline = context.winner === "tie"
+        ? "The spells cancel out."
+        : context.winner === "player"
+          ? "You win the clash."
+          : "The rival wins the clash.";
+      const comboText = [
+        playerCombo ? "You spent " + playerCombo.cost + " mana on " + playerCombo.name + "." : "",
+        aiCombo ? "The rival spent " + aiCombo.cost + " mana on " + aiCombo.name + "." : ""
+      ].filter(Boolean);
+      const noteText = comboText.concat(context.notes).join(" ");
+
+      if (state.playerScore >= 7 || state.aiScore >= 7) {
+        state.gameOver = true;
+        byId("result").innerHTML = `<strong>${state.playerScore >= 7 ? "You win the duel." : "The rival wins the duel."}</strong> ${headline} ${noteText}`;
+        byId("hint").textContent = "Reset the match to play again.";
+      } else {
+        byId("result").innerHTML = `<strong>${headline}</strong> ${context.playerSpell.name} met ${context.aiSpell.name}. ${noteText || "The old rules did the work."}`;
+      }
+
+      render();
+      animateReveal();
+    }
+
+    function resetGame() {
+      Object.assign(state, {
+        playerScore: 0,
+        aiScore: 0,
+        playerMana: 0,
+        aiMana: 0,
+        playerHistory: [],
+        aiHistory: [],
+        selectedSpell: null,
+        selectedCombo: null,
+        gameOver: false,
+        lastPlayerCast: null,
+        lastAiCast: null
+      });
+      byId("result").innerHTML = "<strong>Ready the circle.</strong> Pick a spell. Combos unlock when your recent spell memory contains their ingredients.";
+      byId("hint").textContent = "First to 7 points wins. Losing and tying earn mana, so the behind player gets comeback tools.";
+      byId("result").classList.remove("pop");
+      byId("playerOrb").classList.remove("reveal");
+      byId("aiOrb").classList.remove("reveal");
+      document.querySelector(".versus").classList.remove("clashing");
+      render();
+    }
+
+    byId("cast").addEventListener("click", castRound);
+    byId("reset").addEventListener("click", resetGame);
+    render();
+  </script>
+</body>
+</html>

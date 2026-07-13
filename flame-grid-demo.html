@@ -1,0 +1,1104 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Flame Grid Demo</title>
+  <style>
+    :root {
+      --bg: #171512;
+      --panel: #24201a;
+      --line: #3f372d;
+      --text: #fff4dc;
+      --muted: #b7a98f;
+      --dot: #766a57;
+      --flame: #ff6a2a;
+      --flame-bright: #ffd166;
+      --spell: #ff6a2a;
+      --spell-bright: #ffd166;
+    }
+
+    * {
+      box-sizing: border-box;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      background: var(--bg);
+      color: var(--text);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    main {
+      width: min(520px, calc(100vw - 24px));
+      padding: 18px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: var(--panel);
+      box-shadow: 0 16px 50px rgba(0, 0, 0, 0.28);
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: start;
+      margin-bottom: 14px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 1.1rem;
+      letter-spacing: 0;
+    }
+
+    p {
+      margin: 4px 0 0;
+      color: var(--muted);
+      font-size: 0.84rem;
+      line-height: 1.35;
+    }
+
+    button {
+      min-width: 68px;
+      height: 34px;
+      border: 1px solid #5b5041;
+      border-radius: 8px;
+      background: #191714;
+      color: var(--text);
+      font: inherit;
+      cursor: pointer;
+    }
+
+    .spell-switch {
+      display: none;
+      gap: 6px;
+      justify-content: flex-end;
+      margin-top: 8px;
+    }
+
+    .spell-switch button {
+      min-width: 62px;
+      height: 30px;
+      color: var(--muted);
+    }
+
+    .spell-switch button.active {
+      border-color: var(--spell-bright);
+      color: var(--text);
+      box-shadow: 0 0 14px color-mix(in srgb, var(--spell) 58%, transparent);
+    }
+
+    .grid-wrap {
+      position: relative;
+      aspect-ratio: 1;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background:
+        radial-gradient(circle at center, color-mix(in srgb, var(--spell) 12%, transparent), transparent 58%),
+        #1b1814;
+      touch-action: none;
+      overflow: hidden;
+      transition: box-shadow 260ms ease, transform 260ms ease;
+    }
+
+    .grid-wrap.expanding {
+      animation: zoomOut 360ms ease-out;
+      box-shadow: inset 0 0 46px color-mix(in srgb, var(--spell) 18%, transparent), 0 0 26px color-mix(in srgb, var(--spell) 22%, transparent);
+    }
+
+    svg {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+    }
+
+    .path {
+      fill: none;
+      stroke: var(--flame);
+      stroke-width: 8;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      filter: drop-shadow(0 0 9px rgba(255, 106, 42, 0.75));
+    }
+
+    .path-segment {
+      fill: none;
+      stroke-width: 8;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .segment-apprentice {
+      stroke: var(--spell);
+      filter: drop-shadow(0 0 9px color-mix(in srgb, var(--spell) 76%, transparent));
+    }
+
+    .segment-adept {
+      stroke: var(--spell-bright);
+      filter: drop-shadow(0 0 8px color-mix(in srgb, var(--spell-bright) 70%, transparent));
+    }
+
+    .segment-mage {
+      stroke: #73d0ff;
+      filter: drop-shadow(0 0 8px rgba(115, 208, 255, 0.68));
+    }
+
+    .segment-archmage {
+      stroke: #c987ff;
+      filter: drop-shadow(0 0 8px rgba(201, 135, 255, 0.7));
+    }
+
+    .segment-bridge {
+      stroke: #ffe9a8;
+      stroke-dasharray: 10 7;
+      filter: drop-shadow(0 0 8px rgba(255, 233, 168, 0.72));
+    }
+
+    .segment-invalid {
+      stroke: #ff3b3b;
+      filter: drop-shadow(0 0 10px rgba(255, 59, 59, 0.82));
+    }
+
+    .segment-invalid.fail-shake {
+      animation: failShake 420ms ease-out;
+    }
+
+    .boundary {
+      fill: none;
+      stroke-width: 1.6;
+      rx: 7;
+      opacity: 0.7;
+    }
+
+    .boundary-apprentice { stroke: rgba(255, 106, 42, 0.95); }
+    .boundary-adept { stroke: rgba(255, 209, 102, 0.85); }
+    .boundary-mage { stroke: rgba(115, 208, 255, 0.82); }
+    .boundary-archmage { stroke: rgba(201, 135, 255, 0.82); }
+
+    .live {
+      fill: none;
+      stroke: rgba(255, 209, 102, 0.62);
+      stroke-width: 4;
+      stroke-linecap: round;
+      stroke-dasharray: 6 10;
+    }
+
+    .dot {
+      position: absolute;
+      width: 42px;
+      height: 42px;
+      display: grid;
+      place-items: center;
+      border: 2px solid #8f8068;
+      border-radius: 50%;
+      background: #2d281f;
+      color: var(--muted);
+      font-weight: 800;
+      transform: translate(-50%, -50%);
+      transition: left 320ms ease, top 320ms ease, opacity 220ms ease, transform 220ms ease;
+    }
+
+    .dot.new {
+      animation: dotReveal 420ms ease-out both;
+    }
+
+    .dot.active {
+      border-color: var(--spell-bright);
+      background: var(--spell);
+      color: #21160e;
+      box-shadow: 0 0 20px color-mix(in srgb, var(--spell) 72%, transparent);
+    }
+
+    .dot.cast-pulse {
+      animation: castPulse 520ms ease-out;
+    }
+
+    .status {
+      min-height: 72px;
+      margin-top: 12px;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #191714;
+    }
+
+    .duel {
+      margin-bottom: 12px;
+      padding: 10px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #191714;
+    }
+
+    .duel-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .duel input {
+      width: 96px;
+      height: 34px;
+      border: 1px solid #5b5041;
+      border-radius: 8px;
+      background: #11100e;
+      color: var(--text);
+      font: inherit;
+      padding: 0 10px;
+      text-transform: uppercase;
+    }
+
+    .duel button {
+      min-width: 58px;
+    }
+
+    .duel-bars {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .meter-label {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 0.78rem;
+      font-weight: 800;
+    }
+
+    .meter {
+      height: 10px;
+      margin-top: 4px;
+      border: 1px solid #5b5041;
+      border-radius: 999px;
+      background: #0f0e0c;
+      overflow: hidden;
+    }
+
+    .meter span {
+      display: block;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, #73d0ff, var(--spell-bright));
+      transition: width 220ms ease;
+    }
+
+    .duel-log {
+      min-height: 18px;
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 0.78rem;
+      line-height: 1.35;
+    }
+
+    .sequence {
+      color: var(--muted);
+      font-size: 0.82rem;
+    }
+
+    .result {
+      margin-top: 6px;
+      font-size: 1.25rem;
+      font-weight: 900;
+    }
+
+    .result.success {
+      color: var(--spell-bright);
+      text-shadow: 0 0 16px color-mix(in srgb, var(--spell) 86%, transparent);
+    }
+
+    .result.cast-pop {
+      animation: resultPop 520ms ease-out;
+    }
+
+    .result.fail {
+      color: #d2c3a9;
+    }
+
+    .result.fail-pop {
+      animation: failPop 420ms ease-out;
+    }
+
+    .result.warning {
+      color: var(--flame-bright);
+      text-shadow: 0 0 16px rgba(255, 106, 42, 0.72);
+    }
+
+    @keyframes zoomOut {
+      0% {
+        transform: scale(1.06);
+      }
+      100% {
+        transform: scale(1);
+      }
+    }
+
+    @keyframes dotReveal {
+      0% {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(0.52);
+      }
+      100% {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1);
+      }
+    }
+
+    @keyframes castPulse {
+      0% {
+        transform: translate(-50%, -50%) scale(1);
+      }
+      42% {
+        transform: translate(-50%, -50%) scale(1.26);
+        box-shadow: 0 0 30px color-mix(in srgb, var(--spell-bright) 95%, transparent), 0 0 54px color-mix(in srgb, var(--spell) 52%, transparent);
+      }
+      100% {
+        transform: translate(-50%, -50%) scale(1);
+      }
+    }
+
+    @keyframes resultPop {
+      0% {
+        transform: translateY(4px) scale(0.98);
+      }
+      55% {
+        transform: translateY(-2px) scale(1.02);
+      }
+      100% {
+        transform: translateY(0) scale(1);
+      }
+    }
+
+    @keyframes failShake {
+      0%, 100% {
+        transform: translateX(0);
+        opacity: 1;
+      }
+      20% {
+        transform: translateX(-4px);
+        opacity: 0.82;
+      }
+      42% {
+        transform: translateX(5px);
+        opacity: 1;
+      }
+      64% {
+        transform: translateX(-3px);
+      }
+      82% {
+        transform: translateX(2px);
+      }
+    }
+
+    @keyframes failPop {
+      0% {
+        transform: scale(1);
+        text-shadow: none;
+      }
+      45% {
+        transform: scale(1.025);
+        text-shadow: 0 0 18px rgba(255, 59, 59, 0.72);
+      }
+      100% {
+        transform: scale(1);
+      }
+    }
+
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <div>
+        <h1 id="title">Apprentice Flame Grid</h1>
+        <p id="instruction">Draw 41-49-32-51-41. Keep drawing to reveal deeper grids.</p>
+        <div class="spell-switch" aria-label="Spell selector">
+          <button class="active" id="flameBtn" type="button">Flame</button>
+          <button id="frostBtn" type="button">Frost</button>
+        </div>
+      </div>
+      <button id="clear" type="button">Clear</button>
+    </header>
+
+    <section class="duel" aria-label="Online duel">
+      <div class="duel-row">
+        <input id="roomCode" aria-label="Room code" maxlength="8" value="ARCANE">
+        <button id="hostRoom" type="button">Host</button>
+        <button id="joinRoom" type="button">Join</button>
+      </div>
+      <div class="duel-bars">
+        <div>
+          <div class="meter-label"><span>You</span><span id="myHpText">100</span></div>
+          <div class="meter"><span id="myHpBar"></span></div>
+        </div>
+        <div>
+          <div class="meter-label"><span>Rival</span><span id="rivalHpText">100</span></div>
+          <div class="meter"><span id="rivalHpBar"></span></div>
+        </div>
+      </div>
+      <div class="duel-log" id="duelLog">Offline practice. Host or join a room for 1v1.</div>
+    </section>
+
+    <section class="grid-wrap" id="grid" aria-label="3 by 3 spell drawing grid">
+      <svg viewBox="0 0 300 300" aria-hidden="true">
+        <g id="boundaries"></g>
+        <g id="pathSegments"></g>
+        <polyline class="path" id="path" points=""></polyline>
+        <line class="live" id="live" x1="0" y1="0" x2="0" y2="0"></line>
+      </svg>
+    </section>
+
+    <section class="status" aria-live="polite">
+      <div class="sequence">Pattern: <span id="sequence">none</span></div>
+      <div class="result" id="result">Draw the glyph.</div>
+    </section>
+  </main>
+
+  <script>
+    const grid = document.getElementById("grid");
+    const path = document.getElementById("path");
+    const pathSegments = document.getElementById("pathSegments");
+    const boundaries = document.getElementById("boundaries");
+    const live = document.getElementById("live");
+    const sequenceEl = document.getElementById("sequence");
+    const resultEl = document.getElementById("result");
+    const clearBtn = document.getElementById("clear");
+    const flameBtn = document.getElementById("flameBtn");
+    const frostBtn = document.getElementById("frostBtn");
+    const roomCodeInput = document.getElementById("roomCode");
+    const hostRoomBtn = document.getElementById("hostRoom");
+    const joinRoomBtn = document.getElementById("joinRoom");
+    const duelLog = document.getElementById("duelLog");
+    const myHpText = document.getElementById("myHpText");
+    const rivalHpText = document.getElementById("rivalHpText");
+    const myHpBar = document.getElementById("myHpBar");
+    const rivalHpBar = document.getElementById("rivalHpBar");
+    const spellConfigs = {
+      flame: {
+        name: "Flame",
+        color: "#ff6a2a",
+        bright: "#ffd166",
+        ranks: [
+          { name: "Apprentice", size: 3, flame: [41, 49, 32, 51, 41] },
+          {
+            name: "Adept",
+            size: 5,
+            flame: [49, 32, 51, 41, 49, 57, 58, 50, 60, 61, 42, 23, 40, 57],
+            variants: [
+              [49, 32, 51, 41, 49, 57, 58, 50, 60, 61, 42, 23, 40, 57],
+              [51, 32, 49, 41, 51, 61, 42, 23, 40, 57, 58, 50, 60, 61]
+            ]
+          },
+          {
+            name: "Mage",
+            size: 7,
+            flame: [49, 32, 51, 41, 49, 57, 40, 23, 42, 61, 60, 50, 58, 57, 65, 66, 67, 59, 69, 70, 71, 61],
+            variants: [
+              [49, 32, 51, 41, 49, 57, 40, 23, 42, 61, 60, 50, 58, 57, 65, 66, 67, 59, 69, 70, 71, 61],
+              [51, 32, 49, 41, 51, 61, 42, 23, 40, 57, 58, 50, 60, 61, 71, 70, 69, 59, 67, 66, 65, 57]
+            ]
+          },
+          {
+            name: "Archmage",
+            size: 9,
+            flame: [49, 32, 51, 41, 49, 57, 58, 50, 60, 61, 42, 23, 40, 57, 65, 66, 67, 59, 69, 70, 71, 61, 71, 81, 80, 79, 78, 68, 76, 75, 74, 73, 65, 56, 48, 39, 31, 22, 14, 24, 33, 43, 52, 62, 71]
+          }
+        ]
+      },
+      frost: {
+        name: "Frost",
+        color: "#57b9ff",
+        bright: "#d7f4ff",
+        ranks: [
+          { name: "Apprentice", size: 3, flame: [50, 40, 32, 42, 50] },
+          { name: "Adept", size: 5, flame: [50, 40, 32, 42, 50, 59, 51, 42, 33, 23, 31, 40, 49, 59] },
+          { name: "Mage", size: 7, flame: [50, 40, 32, 42, 50, 59, 49, 40, 31, 23, 33, 42, 51, 59, 68, 58, 48, 38, 30, 22, 14, 24, 34, 44, 52, 60, 68] },
+          { name: "Archmage", size: 9, flame: [50, 40, 32, 42, 50, 59, 49, 40, 31, 23, 33, 42, 51, 59, 68, 58, 48, 38, 30, 22, 14, 24, 34, 44, 52, 60, 68, 77, 67, 66, 57, 47, 37, 29, 20, 21, 13, 5, 15, 25, 26, 35, 45, 53, 61, 70, 69, 77] }
+        ]
+      }
+    };
+    let activeSpell = null;
+    let ranks = spellConfigs.flame.ranks;
+
+    let drawing = false;
+    let rankIndex = 0;
+    let nodes = visibleNodes();
+    let sequence = [];
+    let segmentStart = 0;
+    let rankLoopCounts = [0, 0, 0, 0];
+    let pointer = { x: 0, y: 0 };
+    let duel = {
+      room: "",
+      player: "",
+      poll: null,
+      lastCast: "",
+      lastEvent: 0
+    };
+
+    const attackValues = [10, 18, 30, 45];
+
+    function cleanRoomCode() {
+      return roomCodeInput.value.trim().toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 8) || "ARCANE";
+    }
+
+    function setDuelLog(message) {
+      duelLog.textContent = message;
+    }
+
+    function setHp(myHp = 100, rivalHp = 100) {
+      myHpText.textContent = myHp;
+      rivalHpText.textContent = rivalHp;
+      myHpBar.style.width = Math.max(0, Math.min(100, myHp)) + "%";
+      rivalHpBar.style.width = Math.max(0, Math.min(100, rivalHp)) + "%";
+    }
+
+    function damageForCounts(counts) {
+      return counts.reduce((total, count, index) => total + count * attackValues[index], 0);
+    }
+
+    async function api(path, body) {
+      const response = await fetch(path, {
+        method: body ? "POST" : "GET",
+        headers: body ? { "Content-Type": "application/json" } : undefined,
+        body: body ? JSON.stringify(body) : undefined
+      });
+      if (!response.ok) throw new Error(await response.text());
+      return response.json();
+    }
+
+    async function connectDuel(role) {
+      try {
+        const room = cleanRoomCode();
+        roomCodeInput.value = room;
+        const joined = await api("/api/join", { room, role });
+        duel.room = joined.room;
+        duel.player = joined.player;
+        duel.lastEvent = 0;
+        setDuelLog("Room " + duel.room + " joined as " + duel.player.toUpperCase() + ". Waiting for rival.");
+        if (duel.poll) clearInterval(duel.poll);
+        await pollDuel();
+        duel.poll = setInterval(pollDuel, 900);
+      } catch (error) {
+        setDuelLog("Online server not running. Start duel-server.py to play 1v1.");
+      }
+    }
+
+    async function pollDuel() {
+      if (!duel.room || !duel.player) return;
+      try {
+        const state = await api("/api/state?room=" + encodeURIComponent(duel.room) + "&player=" + encodeURIComponent(duel.player));
+        setHp(state.you.hp, state.rival.hp);
+        if (state.winner) {
+          setDuelLog(state.winner === duel.player ? "Victory. Rival life reached 0." : "Defeat. Your life reached 0.");
+        } else if (!state.rival.connected) {
+          setDuelLog("Room " + duel.room + " ready. Waiting for rival.");
+        } else if (state.events.length && state.events[state.events.length - 1].id !== duel.lastEvent) {
+          const event = state.events[state.events.length - 1];
+          duel.lastEvent = event.id;
+          const source = event.player === duel.player ? "You" : "Rival";
+          setDuelLog(source + " cast " + event.spell + " for " + event.damage + " damage.");
+        } else {
+          setDuelLog("Room " + duel.room + " live. Cast a spell to attack.");
+        }
+      } catch (error) {
+        setDuelLog("Connection lost. Re-host or re-join the room.");
+      }
+    }
+
+    async function sendOnlineCast(counts) {
+      if (!duel.room || !duel.player || !activeSpell) return;
+      const damage = damageForCounts(counts);
+      if (damage <= 0) return;
+      const signature = duel.room + ":" + duel.player + ":" + activeSpell + ":" + sequence.join("-") + ":" + counts.join(",");
+      if (signature === duel.lastCast) return;
+      duel.lastCast = signature;
+      try {
+        const state = await api("/api/cast", {
+          room: duel.room,
+          player: duel.player,
+          spell: spellConfigs[activeSpell].name,
+          sequence,
+          counts,
+          damage
+        });
+        setHp(state.you.hp, state.rival.hp);
+        setDuelLog("You cast " + spellConfigs[activeSpell].name + " for " + damage + " damage.");
+      } catch (error) {
+        setDuelLog("Cast stayed local. Online room is not connected.");
+      }
+    }
+
+    function masterPosition(id) {
+      return {
+        row: Math.floor((id - 1) / 9),
+        col: (id - 1) % 9
+      };
+    }
+
+    function nodeId(row, col) {
+      return row * 9 + col + 1;
+    }
+
+    function visibleBounds() {
+      const size = ranks[rankIndex].size;
+      const start = (9 - size) / 2;
+      return { size, start, end: start + size - 1 };
+    }
+
+    function visibleNodes() {
+      const bounds = visibleBounds();
+      const list = [];
+      for (let row = bounds.start; row <= bounds.end; row++) {
+        for (let col = bounds.start; col <= bounds.end; col++) {
+          const x = 12 + ((col - bounds.start) / (bounds.size - 1)) * 76;
+          const y = 12 + ((row - bounds.start) / (bounds.size - 1)) * 76;
+          list.push({ id: nodeId(row, col), x, y });
+        }
+      }
+      return list;
+    }
+
+    function nodePoint(node) {
+      return { x: node.x * 3, y: node.y * 3 };
+    }
+
+    function pointForRankNode(rank, id) {
+      const bounds = visibleBounds();
+      const position = masterPosition(id);
+      const x = 12 + ((position.col - bounds.start) / (bounds.size - 1)) * 76;
+      const y = 12 + ((position.row - bounds.start) / (bounds.size - 1)) * 76;
+      return { x: x * 3, y: y * 3 };
+    }
+
+    function rankClassName(index) {
+      return ["apprentice", "adept", "mage", "archmage"][index];
+    }
+
+    function renderDots() {
+      const existing = new Set([...document.querySelectorAll(".dot")].map((dot) => Number(dot.dataset.id)));
+      document.querySelectorAll(".dot").forEach((dot) => dot.remove());
+      nodes.forEach((node) => {
+        const dot = document.createElement("div");
+        dot.className = "dot" + (existing.size && !existing.has(node.id) ? " new" : "");
+        dot.dataset.id = node.id;
+        dot.style.left = node.x + "%";
+        dot.style.top = node.y + "%";
+        dot.textContent = node.id;
+        grid.appendChild(dot);
+      });
+      renderBoundaries();
+    }
+
+    function renderBoundaries() {
+      boundaries.innerHTML = "";
+      const currentBounds = visibleBounds();
+
+      ranks.slice(0, rankIndex + 1).forEach((rank, index) => {
+        const rankStart = (9 - rank.size) / 2;
+        const rankEnd = rankStart + rank.size - 1;
+        const start = 12 + ((rankStart - currentBounds.start) / (currentBounds.size - 1)) * 76;
+        const end = 12 + ((rankEnd - currentBounds.start) / (currentBounds.size - 1)) * 76;
+        const padding = 10;
+        const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+        rect.setAttribute("class", "boundary boundary-" + rankClassName(index));
+        rect.setAttribute("x", String(start * 3 - padding));
+        rect.setAttribute("y", String(start * 3 - padding));
+        rect.setAttribute("width", String((end - start) * 3 + padding * 2));
+        rect.setAttribute("height", String((end - start) * 3 + padding * 2));
+        boundaries.appendChild(rect);
+      });
+    }
+
+    function nearestNode(clientX, clientY) {
+      const rect = grid.getBoundingClientRect();
+      const x = ((clientX - rect.left) / rect.width) * 100;
+      const y = ((clientY - rect.top) / rect.height) * 100;
+      pointer = { x: x * 3, y: y * 3 };
+
+      return nodes.find((node) => {
+        const dx = node.x - x;
+        const dy = node.y - y;
+        const hitRadius = Math.max(4.2, Math.min(9, 18 / ranks[rankIndex].size));
+        return Math.sqrt(dx * dx + dy * dy) < hitRadius;
+      });
+    }
+
+    function addNode(node) {
+      const last = sequence[sequence.length - 1];
+      if (last === node.id) return;
+      sequence.push(node.id);
+      document.querySelector(`[data-id="${node.id}"]`).classList.add("active");
+      updatePath();
+      checkExpansion();
+    }
+
+    function edgeKey(a, b) {
+      return [a, b].sort((left, right) => left - right).join("-");
+    }
+
+    function flameEdgesFor(rank) {
+      const edges = new Set();
+      (rank.variants || [rank.flame]).forEach((pattern) => {
+        pattern.slice(0, -1).forEach((id, index) => edges.add(edgeKey(id, pattern[index + 1])));
+      });
+      return edges;
+    }
+
+    function flameEdgeSetsFor(rank) {
+      return (rank.variants || [rank.flame]).map((pattern) => {
+        return new Set(pattern.slice(0, -1).map((id, index) => edgeKey(id, pattern[index + 1])));
+      });
+    }
+
+    function flameNodesFor(rank) {
+      const ids = new Set();
+      (rank.variants || [rank.flame]).forEach((pattern) => pattern.forEach((id) => ids.add(id)));
+      return ids;
+    }
+
+    function restartClass(element, className) {
+      element.classList.remove(className);
+      void element.offsetWidth;
+      element.classList.add(className);
+    }
+
+    function animateSuccess(rank) {
+      restartClass(resultEl, "cast-pop");
+      flameNodesFor(rank).forEach((id) => {
+        const dot = document.querySelector(`[data-id="${id}"]`);
+        if (dot) restartClass(dot, "cast-pulse");
+      });
+    }
+
+    function animateFailure() {
+      restartClass(resultEl, "fail-pop");
+      document.querySelectorAll(".segment-invalid").forEach((segment) => {
+        restartClass(segment, "fail-shake");
+      });
+    }
+
+    function flameBridgeEdges() {
+      if (activeSpell !== "flame") return new Set();
+      return new Set([
+        edgeKey(32, 23),
+        edgeKey(23, 14),
+        edgeKey(14, 5)
+      ]);
+    }
+
+    function spellIdsForValidation() {
+      return activeSpell ? [activeSpell] : Object.keys(spellConfigs);
+    }
+
+    function rankForSpell(spellId, index) {
+      return spellConfigs[spellId].ranks[index];
+    }
+
+    function detectSpellAtRank(index) {
+      let best = { spellId: null, count: 0 };
+      Object.keys(spellConfigs).forEach((spellId) => {
+        const count = countFlameLoopsInPath(sequence, rankForSpell(spellId, index));
+        if (count > best.count) best = { spellId, count };
+      });
+      return best;
+    }
+
+    function applyDetectedSpell(spellId) {
+      if (activeSpell === spellId) return;
+      activeSpell = spellId;
+      ranks = spellConfigs[activeSpell].ranks;
+      refreshRankText();
+      renderDots();
+      updatePath();
+    }
+
+    function rankContainsNode(rank, id) {
+      const boundsStart = (9 - rank.size) / 2;
+      const boundsEnd = boundsStart + rank.size - 1;
+      const position = masterPosition(id);
+      return position.row >= boundsStart
+        && position.row <= boundsEnd
+        && position.col >= boundsStart
+        && position.col <= boundsEnd;
+    }
+
+    function countFlameLoopsInPath(pattern, rank) {
+      if (pattern.length < 2) return 0;
+
+      const variantCounts = flameEdgeSetsFor(rank).map((flameEdges) => {
+        const edgeCounts = new Map([...flameEdges].map((edge) => [edge, 0]));
+
+        for (let index = 0; index < pattern.length - 1; index++) {
+          const edge = edgeKey(pattern[index], pattern[index + 1]);
+
+          if (edgeCounts.has(edge)) {
+            edgeCounts.set(edge, edgeCounts.get(edge) + 1);
+          }
+        }
+
+        return Math.min(...edgeCounts.values());
+      });
+
+      return Math.max(...variantCounts);
+    }
+
+    function isValidVisibleEdge(a, b) {
+      const edge = edgeKey(a, b);
+      if (flameBridgeEdges().has(edge)) return true;
+      return spellIdsForValidation().some((spellId) => {
+        return spellConfigs[spellId].ranks
+          .slice(0, rankIndex + 1)
+          .some((rank) => rankContainsNode(rank, a) && rankContainsNode(rank, b) && flameEdgesFor(rank).has(edge));
+      });
+    }
+
+    function segmentClassForEdge(a, b) {
+      const edge = edgeKey(a, b);
+      if (flameBridgeEdges().has(edge)) return "segment-bridge";
+
+      for (let index = 0; index <= rankIndex; index++) {
+        for (const spellId of spellIdsForValidation()) {
+          const rank = rankForSpell(spellId, index);
+          if (rankContainsNode(rank, a) && rankContainsNode(rank, b) && flameEdgesFor(rank).has(edge)) {
+            return "segment-" + rankClassName(index);
+          }
+        }
+      }
+
+      return "segment-invalid";
+    }
+
+    function hasInvalidVisibleEdge(pattern) {
+      for (let index = 0; index < pattern.length - 1; index++) {
+        if (!isValidVisibleEdge(pattern[index], pattern[index + 1])) return true;
+      }
+      return false;
+    }
+
+    function visibleLoopCounts() {
+      if (!activeSpell) return ranks.slice(0, rankIndex + 1).map(() => 0);
+      return ranks
+        .slice(0, rankIndex + 1)
+        .map((rank) => countFlameLoopsInPath(sequence, rank));
+    }
+
+    function totalVisibleLoops(counts = visibleLoopCounts()) {
+      return counts.reduce((total, count) => total + count, 0);
+    }
+
+    function loopSummary(counts = visibleLoopCounts()) {
+      const spellName = activeSpell ? spellConfigs[activeSpell].name : "Spell";
+      const parts = counts
+        .map((count, index) => count > 0 ? ranks[index].name + " x" + count : "")
+        .filter(Boolean);
+      return parts.length ? parts.join(" + ") + " = Total " + spellName + " x" + totalVisibleLoops(counts) : "";
+    }
+
+    function incompleteSummary(counts = visibleLoopCounts()) {
+      if (rankIndex === 0 || counts[rankIndex] > 0 || totalVisibleLoops(counts) === 0) return "";
+      return " - " + ranks[rankIndex].name + " incomplete";
+    }
+
+    function refreshRankText() {
+      const spell = activeSpell ? spellConfigs[activeSpell] : { name: "Spell", color: "#ff6a2a", bright: "#ffd166" };
+      const rank = ranks[rankIndex];
+      document.documentElement.style.setProperty("--spell", spell.color);
+      document.documentElement.style.setProperty("--spell-bright", spell.bright);
+      flameBtn.classList.toggle("active", activeSpell === "flame");
+      frostBtn.classList.toggle("active", activeSpell === "frost");
+      document.getElementById("title").textContent = activeSpell ? rank.name + " " + spell.name + " Grid" : rank.name + " Spell Grid";
+      document.getElementById("instruction").textContent = !activeSpell
+        ? "Draw a spell pattern. Flame and Frost are recognized by shape."
+        : rank.name === "Archmage"
+        ? "Full 9x9 grid revealed. Complete the final " + spell.name + "."
+        : "Draw " + rank.flame.join("-") + ". Keep drawing to reveal deeper grids.";
+      grid.setAttribute("aria-label", rank.size + " by " + rank.size + " spell drawing grid");
+    }
+
+    function expandGrid(loopCount, castRank) {
+      if (rankIndex >= ranks.length - 1) return;
+      rankIndex += 1;
+      segmentStart = Math.max(0, sequence.length - 1);
+      nodes = visibleNodes();
+      grid.classList.remove("expanding");
+      void grid.offsetWidth;
+      grid.classList.add("expanding");
+      renderDots();
+      updatePath();
+      refreshRankText();
+      const rank = ranks[rankIndex];
+      const counts = visibleLoopCounts();
+      resultEl.className = "result success";
+      resultEl.textContent = castRank.name + " " + spellConfigs[activeSpell].name + " cast! x" + loopCount + " - " + rank.name + " " + rank.size + "x" + rank.size + " revealed. " + loopSummary(counts);
+      animateSuccess(castRank);
+    }
+
+    function checkExpansion() {
+      if (!drawing || rankIndex >= ranks.length - 1) return;
+      const detected = activeSpell
+        ? { spellId: activeSpell, count: countFlameLoopsInPath(sequence, ranks[rankIndex]) }
+        : detectSpellAtRank(rankIndex);
+      if (!detected.spellId) return;
+      if (!activeSpell) applyDetectedSpell(detected.spellId);
+      const currentRank = ranks[rankIndex];
+      const loopCount = detected.count;
+      if (loopCount > rankLoopCounts[rankIndex]) {
+        rankLoopCounts[rankIndex] = loopCount;
+        expandGrid(loopCount, currentRank);
+      }
+    }
+
+    function updatePath() {
+      path.setAttribute("points", "");
+      pathSegments.innerHTML = "";
+      for (let index = 0; index < sequence.length - 1; index++) {
+        const from = nodes.find((node) => node.id === sequence[index]);
+        const to = nodes.find((node) => node.id === sequence[index + 1]);
+        if (!from || !to) continue;
+        const fromPoint = nodePoint(from);
+        const toPoint = nodePoint(to);
+        const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+        line.setAttribute("class", "path-segment " + segmentClassForEdge(sequence[index], sequence[index + 1]));
+        line.setAttribute("x1", String(fromPoint.x));
+        line.setAttribute("y1", String(fromPoint.y));
+        line.setAttribute("x2", String(toPoint.x));
+        line.setAttribute("y2", String(toPoint.y));
+        pathSegments.appendChild(line);
+      }
+      sequenceEl.textContent = sequence.length ? sequence.join("-") : "none";
+
+      const last = sequence[sequence.length - 1];
+      const lastNode = nodes.find((node) => node.id === last);
+      if (drawing && lastNode) {
+        const point = nodePoint(lastNode);
+        live.setAttribute("x1", point.x);
+        live.setAttribute("y1", point.y);
+        live.setAttribute("x2", pointer.x);
+        live.setAttribute("y2", pointer.y);
+        live.style.opacity = "1";
+      } else {
+        live.style.opacity = "0";
+      }
+    }
+
+    function finishPattern() {
+      drawing = false;
+      updatePath();
+      const pattern = sequence.join("-");
+      resultEl.className = "result";
+
+      if (!sequence.length) {
+        resultEl.textContent = "Draw the glyph.";
+      } else if (hasInvalidVisibleEdge(sequence)) {
+        if (!activeSpell) {
+          const detected = detectSpellAtRank(rankIndex);
+          if (detected.spellId) applyDetectedSpell(detected.spellId);
+        }
+        const counts = visibleLoopCounts();
+        counts.forEach((count, index) => {
+          rankLoopCounts[index] = Math.max(rankLoopCounts[index], count);
+        });
+        const summary = loopSummary(counts);
+        if (summary) {
+          sendOnlineCast(counts);
+          resultEl.textContent = spellConfigs[activeSpell].name + " cast! " + summary + " - " + ranks[rankIndex].name + " miscast";
+          resultEl.classList.add("warning");
+          animateSuccess(ranks[Math.max(0, counts.findLastIndex((count) => count > 0))]);
+          animateFailure();
+        } else {
+          resultEl.textContent = "Miscast.";
+          resultEl.classList.add("fail");
+          animateFailure();
+        }
+      } else {
+        if (!activeSpell) {
+          const detected = detectSpellAtRank(rankIndex);
+          if (detected.spellId) applyDetectedSpell(detected.spellId);
+        }
+        const counts = visibleLoopCounts();
+        counts.forEach((count, index) => {
+          rankLoopCounts[index] = Math.max(rankLoopCounts[index], count);
+        });
+        const summary = loopSummary(counts);
+        if (summary) {
+          sendOnlineCast(counts);
+          resultEl.textContent = spellConfigs[activeSpell].name + " cast! " + summary + incompleteSummary(counts);
+          resultEl.classList.add("success");
+          animateSuccess(ranks[Math.max(0, counts.findLastIndex((count) => count > 0))]);
+        } else {
+          resultEl.textContent = rankIndex > 0 ? ranks[rankIndex].name + " grid ready." : "Unrecognized pattern.";
+          if (rankIndex === 0) resultEl.classList.add("fail");
+        }
+      }
+    }
+
+    function clearPattern() {
+      drawing = false;
+      activeSpell = null;
+      ranks = spellConfigs.flame.ranks;
+      rankIndex = 0;
+      nodes = visibleNodes();
+      sequence = [];
+      segmentStart = 0;
+      rankLoopCounts = [0, 0, 0, 0];
+      duel.lastCast = "";
+      grid.classList.remove("expanding");
+      grid.setAttribute("aria-label", "3 by 3 spell drawing grid");
+      renderDots();
+      refreshRankText();
+      document.querySelectorAll(".dot").forEach((dot) => dot.classList.remove("active"));
+      resultEl.className = "result";
+      resultEl.textContent = "Draw the glyph.";
+      updatePath();
+    }
+
+    function selectSpell(spellId) {
+      activeSpell = spellId;
+      ranks = spellConfigs[activeSpell].ranks;
+      clearPattern();
+    }
+
+    grid.addEventListener("pointerdown", (event) => {
+      clearPattern();
+      drawing = true;
+      grid.setPointerCapture(event.pointerId);
+      const node = nearestNode(event.clientX, event.clientY);
+      if (node) addNode(node);
+      updatePath();
+    });
+
+    grid.addEventListener("pointermove", (event) => {
+      if (!drawing) return;
+      const node = nearestNode(event.clientX, event.clientY);
+      if (node) addNode(node);
+      updatePath();
+    });
+
+    grid.addEventListener("pointerup", finishPattern);
+    grid.addEventListener("pointercancel", finishPattern);
+    clearBtn.addEventListener("click", clearPattern);
+    flameBtn.addEventListener("click", () => selectSpell("flame"));
+    frostBtn.addEventListener("click", () => selectSpell("frost"));
+    hostRoomBtn.addEventListener("click", () => connectDuel("host"));
+    joinRoomBtn.addEventListener("click", () => connectDuel("join"));
+    roomCodeInput.addEventListener("input", () => {
+      roomCodeInput.value = cleanRoomCode();
+    });
+
+    refreshRankText();
+    renderDots();
+    clearPattern();
+  </script>
+</body>
+</html>
