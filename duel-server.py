@@ -57,7 +57,10 @@ class DuelHandler(SimpleHTTPRequestHandler):
         length = int(self.headers.get("Content-Length", "0"))
         if length <= 0:
             return {}
-        return json.loads(self.rfile.read(length).decode("utf-8"))
+        try:
+            return json.loads(self.rfile.read(length).decode("utf-8"))
+        except json.JSONDecodeError:
+            return {}
 
     def do_GET(self):
         parsed = urllib.parse.urlparse(self.path)
@@ -73,7 +76,10 @@ class DuelHandler(SimpleHTTPRequestHandler):
         parsed = urllib.parse.urlparse(self.path)
         if parsed.path == "/api/join":
             body = self.read_json()
-            room = room_for(str(body.get("room", "ARCANE")))
+            room_code = "".join(ch for ch in str(body.get("room", "ARCANE")).upper() if ch.isalnum())[:8] or "ARCANE"
+            if body.get("reset"):
+                rooms[room_code] = new_room(room_code)
+            room = room_for(room_code)
             role = body.get("role")
             player = "p1" if role == "host" else "p2"
             if room["players"][player]["connected"] and time.time() - room["players"][player]["last_seen"] < 15:

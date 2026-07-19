@@ -230,6 +230,37 @@
       background: #191714;
     }
 
+    .scene {
+      display: none;
+    }
+
+    .scene.active {
+      display: block;
+    }
+
+    .lobby-scene {
+      min-height: 420px;
+      display: none;
+      align-content: center;
+    }
+
+    .lobby-scene.active {
+      display: grid;
+    }
+
+    .lobby-title {
+      margin: 0;
+      font-size: 1.45rem;
+      line-height: 1.1;
+    }
+
+    .lobby-copy {
+      margin: 8px 0 18px;
+      color: var(--muted);
+      font-size: 0.9rem;
+      line-height: 1.35;
+    }
+
     .duel {
       margin-bottom: 12px;
       padding: 10px;
@@ -259,6 +290,16 @@
 
     .duel button {
       min-width: 58px;
+    }
+
+    .room-pill {
+      color: var(--spell-bright);
+      font-size: 0.8rem;
+      font-weight: 900;
+    }
+
+    .leave-button {
+      margin-left: auto;
     }
 
     .duel-bars {
@@ -300,6 +341,11 @@
       color: var(--muted);
       font-size: 0.78rem;
       line-height: 1.35;
+    }
+
+    .game-scene.match-over .grid-wrap {
+      opacity: 0.78;
+      pointer-events: none;
     }
 
     .sequence {
@@ -419,49 +465,61 @@
 </head>
 <body>
   <main>
-    <header>
-      <div>
-        <h1 id="title">Apprentice Flame Grid</h1>
-        <p id="instruction">Draw 41-49-32-51-41. Keep drawing to reveal deeper grids.</p>
-        <div class="spell-switch" aria-label="Spell selector">
-          <button class="active" id="flameBtn" type="button">Flame</button>
-          <button id="frostBtn" type="button">Frost</button>
-        </div>
-      </div>
-      <button id="clear" type="button">Clear</button>
-    </header>
-
-    <section class="duel" aria-label="Online duel">
+    <section class="scene lobby-scene active" id="lobbyScene" aria-label="Duel lobby">
+      <h1 class="lobby-title">Arcane Clash</h1>
+      <p class="lobby-copy">Enter a room code, then host or join a 1v1 spell duel.</p>
       <div class="duel-row">
         <input id="roomCode" aria-label="Room code" maxlength="8" value="ARCANE">
         <button id="hostRoom" type="button">Host</button>
         <button id="joinRoom" type="button">Join</button>
       </div>
-      <div class="duel-bars">
-        <div>
-          <div class="meter-label"><span>You</span><span id="myHpText">100</span></div>
-          <div class="meter"><span id="myHpBar"></span></div>
-        </div>
-        <div>
-          <div class="meter-label"><span>Rival</span><span id="rivalHpText">100</span></div>
-          <div class="meter"><span id="rivalHpBar"></span></div>
-        </div>
-      </div>
-      <div class="duel-log" id="duelLog">Offline practice. Host or join a room for 1v1.</div>
+      <div class="duel-log" id="duelLog">Ready.</div>
     </section>
 
-    <section class="grid-wrap" id="grid" aria-label="3 by 3 spell drawing grid">
-      <svg viewBox="0 0 300 300" aria-hidden="true">
-        <g id="boundaries"></g>
-        <g id="pathSegments"></g>
-        <polyline class="path" id="path" points=""></polyline>
-        <line class="live" id="live" x1="0" y1="0" x2="0" y2="0"></line>
-      </svg>
-    </section>
+    <section class="scene game-scene" id="gameScene" aria-label="Duel match">
+      <header>
+        <div>
+          <h1 id="title">Apprentice Flame Grid</h1>
+          <p id="instruction">Draw 41-49-32-51-41. Keep drawing to reveal deeper grids.</p>
+          <div class="spell-switch" aria-label="Spell selector">
+            <button class="active" id="flameBtn" type="button">Flame</button>
+            <button id="frostBtn" type="button">Frost</button>
+          </div>
+        </div>
+        <button id="clear" type="button">Clear</button>
+      </header>
 
-    <section class="status" aria-live="polite">
-      <div class="sequence">Pattern: <span id="sequence">none</span></div>
-      <div class="result" id="result">Draw the glyph.</div>
+      <section class="duel" aria-label="Online duel">
+        <div class="duel-row">
+          <span class="room-pill">Room <span id="roomBadge">ARCANE</span></span>
+          <button class="leave-button" id="leaveRoom" type="button">Lobby</button>
+        </div>
+        <div class="duel-bars">
+          <div>
+            <div class="meter-label"><span>You</span><span id="myHpText">100</span></div>
+            <div class="meter"><span id="myHpBar"></span></div>
+          </div>
+          <div>
+            <div class="meter-label"><span>Rival</span><span id="rivalHpText">100</span></div>
+            <div class="meter"><span id="rivalHpBar"></span></div>
+          </div>
+        </div>
+        <div class="duel-log" id="matchLog">Waiting for match.</div>
+      </section>
+
+      <section class="grid-wrap" id="grid" aria-label="3 by 3 spell drawing grid">
+        <svg viewBox="0 0 300 300" aria-hidden="true">
+          <g id="boundaries"></g>
+          <g id="pathSegments"></g>
+          <polyline class="path" id="path" points=""></polyline>
+          <line class="live" id="live" x1="0" y1="0" x2="0" y2="0"></line>
+        </svg>
+      </section>
+
+      <section class="status" aria-live="polite">
+        <div class="sequence">Pattern: <span id="sequence">none</span></div>
+        <div class="result" id="result">Draw the glyph.</div>
+      </section>
     </section>
   </main>
 
@@ -476,10 +534,15 @@
     const clearBtn = document.getElementById("clear");
     const flameBtn = document.getElementById("flameBtn");
     const frostBtn = document.getElementById("frostBtn");
+    const lobbyScene = document.getElementById("lobbyScene");
+    const gameScene = document.getElementById("gameScene");
     const roomCodeInput = document.getElementById("roomCode");
     const hostRoomBtn = document.getElementById("hostRoom");
     const joinRoomBtn = document.getElementById("joinRoom");
+    const leaveRoomBtn = document.getElementById("leaveRoom");
     const duelLog = document.getElementById("duelLog");
+    const matchLog = document.getElementById("matchLog");
+    const roomBadge = document.getElementById("roomBadge");
     const myHpText = document.getElementById("myHpText");
     const rivalHpText = document.getElementById("rivalHpText");
     const myHpBar = document.getElementById("myHpBar");
@@ -543,7 +606,8 @@
       player: "",
       poll: null,
       lastCast: "",
-      lastEvent: 0
+      lastEvent: 0,
+      matchOver: false
     };
 
     const attackValues = [10, 18, 30, 45];
@@ -554,6 +618,30 @@
 
     function setDuelLog(message) {
       duelLog.textContent = message;
+    }
+
+    function setMatchLog(message) {
+      matchLog.textContent = message;
+    }
+
+    function showLobby(message = "Ready.") {
+      if (duel.poll) clearInterval(duel.poll);
+      duel.poll = null;
+      duel.room = "";
+      duel.player = "";
+      duel.lastCast = "";
+      duel.lastEvent = 0;
+      duel.matchOver = false;
+      lobbyScene.classList.add("active");
+      gameScene.classList.remove("active", "match-over");
+      setDuelLog(message);
+      clearPattern();
+      setHp(100, 100);
+    }
+
+    function showGame() {
+      lobbyScene.classList.remove("active");
+      gameScene.classList.add("active");
     }
 
     function setHp(myHp = 100, rivalHp = 100) {
@@ -581,16 +669,20 @@
       try {
         const room = cleanRoomCode();
         roomCodeInput.value = room;
-        const joined = await api("/api/join", { room, role });
+        const joined = await api("/api/join", { room, role, reset: role === "host" });
         duel.room = joined.room;
         duel.player = joined.player;
         duel.lastEvent = 0;
-        setDuelLog("Room " + duel.room + " joined as " + duel.player.toUpperCase() + ". Waiting for rival.");
+        duel.matchOver = false;
+        roomBadge.textContent = duel.room;
+        showGame();
+        setHp(joined.you.hp, joined.rival.hp);
+        setMatchLog("Room " + duel.room + " joined as " + duel.player.toUpperCase() + ". Waiting for rival.");
         if (duel.poll) clearInterval(duel.poll);
         await pollDuel();
         duel.poll = setInterval(pollDuel, 900);
       } catch (error) {
-        setDuelLog("Online server not running. Start duel-server.py to play 1v1.");
+        setDuelLog("Online server not running. Try again after the host wakes up.");
       }
     }
 
@@ -600,24 +692,32 @@
         const state = await api("/api/state?room=" + encodeURIComponent(duel.room) + "&player=" + encodeURIComponent(duel.player));
         setHp(state.you.hp, state.rival.hp);
         if (state.winner) {
-          setDuelLog(state.winner === duel.player ? "Victory. Rival life reached 0." : "Defeat. Your life reached 0.");
+          duel.matchOver = true;
+          gameScene.classList.add("match-over");
+          drawing = false;
+          if (duel.poll) clearInterval(duel.poll);
+          duel.poll = null;
+          const won = state.winner === duel.player;
+          setMatchLog(won ? "Victory. Final health locked." : "Defeat. Final health locked.");
+          resultEl.className = "result " + (won ? "success" : "fail");
+          resultEl.textContent = won ? "Victory." : "Defeat.";
         } else if (!state.rival.connected) {
-          setDuelLog("Room " + duel.room + " ready. Waiting for rival.");
+          setMatchLog("Room " + duel.room + " ready. Waiting for rival.");
         } else if (state.events.length && state.events[state.events.length - 1].id !== duel.lastEvent) {
           const event = state.events[state.events.length - 1];
           duel.lastEvent = event.id;
           const source = event.player === duel.player ? "You" : "Rival";
-          setDuelLog(source + " cast " + event.spell + " for " + event.damage + " damage.");
+          setMatchLog(source + " cast " + event.spell + " for " + event.damage + " damage.");
         } else {
-          setDuelLog("Room " + duel.room + " live. Cast a spell to attack.");
+          setMatchLog("Room " + duel.room + " live. Cast a spell to attack.");
         }
       } catch (error) {
-        setDuelLog("Connection lost. Re-host or re-join the room.");
+        setMatchLog("Connection lost. Return to lobby and re-join.");
       }
     }
 
     async function sendOnlineCast(counts) {
-      if (!duel.room || !duel.player || !activeSpell) return;
+      if (!duel.room || !duel.player || !activeSpell || duel.matchOver) return;
       const damage = damageForCounts(counts);
       if (damage <= 0) return;
       const signature = duel.room + ":" + duel.player + ":" + activeSpell + ":" + sequence.join("-") + ":" + counts.join(",");
@@ -633,9 +733,10 @@
           damage
         });
         setHp(state.you.hp, state.rival.hp);
-        setDuelLog("You cast " + spellConfigs[activeSpell].name + " for " + damage + " damage.");
+        setMatchLog("You cast " + spellConfigs[activeSpell].name + " for " + damage + " damage.");
+        if (state.winner) pollDuel();
       } catch (error) {
-        setDuelLog("Cast stayed local. Online room is not connected.");
+        setMatchLog("Cast stayed local. Online room is not connected.");
       }
     }
 
@@ -993,6 +1094,7 @@
     }
 
     function finishPattern() {
+      if (duel.matchOver) return;
       drawing = false;
       updatePath();
       const pattern = sequence.join("-");
@@ -1070,6 +1172,7 @@
     }
 
     grid.addEventListener("pointerdown", (event) => {
+      if (duel.matchOver) return;
       clearPattern();
       drawing = true;
       grid.setPointerCapture(event.pointerId);
@@ -1079,7 +1182,7 @@
     });
 
     grid.addEventListener("pointermove", (event) => {
-      if (!drawing) return;
+      if (!drawing || duel.matchOver) return;
       const node = nearestNode(event.clientX, event.clientY);
       if (node) addNode(node);
       updatePath();
@@ -1092,6 +1195,7 @@
     frostBtn.addEventListener("click", () => selectSpell("frost"));
     hostRoomBtn.addEventListener("click", () => connectDuel("host"));
     joinRoomBtn.addEventListener("click", () => connectDuel("join"));
+    leaveRoomBtn.addEventListener("click", () => showLobby("Choose a room for the next duel."));
     roomCodeInput.addEventListener("input", () => {
       roomCodeInput.value = cleanRoomCode();
     });
