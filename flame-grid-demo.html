@@ -531,10 +531,10 @@
       return bag;
     }
 
-    function bagEqualsMultiple(source, target, multiple) {
+    function bagEquals(source, target) {
       const keys = new Set([...Object.keys(source), ...Object.keys(target)]);
       for (const key of keys) {
-        if ((source[key] || 0) !== (target[key] || 0) * multiple) return false;
+        if ((source[key] || 0) !== (target[key] || 0)) return false;
       }
       return true;
     }
@@ -546,11 +546,8 @@
 
       const matches = [];
       for (const spell of spells) {
-        const spellEdges = Object.values(spell.edges).reduce((sum, value) => sum + value, 0);
-        if (!spellEdges || sourceEdges % spellEdges) continue;
-        const loops = sourceEdges / spellEdges;
-        if (bagEqualsMultiple(source, spell.edges, loops)) {
-          matches.push({ spell, loops });
+        if (bagEquals(source, spell.edges)) {
+          matches.push({ spell });
         }
       }
 
@@ -561,8 +558,8 @@
       return matches[0] || null;
     }
 
-    function totalDamage(counts, loops) {
-      return counts.reduce((sum, count, index) => sum + count * loops * damageValues[index], 0);
+    function totalDamage(counts) {
+      return counts.reduce((sum, count, index) => sum + count * damageValues[index], 0);
     }
 
     function makeDots() {
@@ -678,7 +675,7 @@
 
     async function sendOnlineCast(match) {
       if (!duel.room || !duel.player || duel.matchOver) return;
-      const counts = match.spell.counts.map((count) => count * match.loops);
+      const counts = match.spell.counts;
       const signature = `${duel.room}:${duel.player}:${match.spell.id}:${sequence.join("-")}:${counts.join(",")}`;
       if (signature === duel.lastCast) return;
       duel.lastCast = signature;
@@ -774,9 +771,8 @@
       if (match) {
         lastResult = match;
         lastColor = match.spell.color;
-        const damage = totalDamage(match.spell.counts, match.loops);
-        const loopText = match.loops > 1 ? ` x${match.loops}` : "";
-        resultText.textContent = `${match.spell.name} LV${match.spell.level} cast${loopText}. ${damage} damage.`;
+        const damage = totalDamage(match.spell.counts);
+        resultText.textContent = `${match.spell.name} LV${match.spell.level} cast. ${damage} damage.`;
         renderPath("success");
         sendOnlineCast(match);
       } else if (sequence.length > 1) {
