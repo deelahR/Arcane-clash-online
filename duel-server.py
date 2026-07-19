@@ -41,6 +41,14 @@ def damage_from_counts(counts):
     return total
 
 
+def connected_count(room, now):
+    return sum(1 for data in room["players"].values() if now - data["last_seen"] <= 20)
+
+
+def server_connected_count(now):
+    return sum(connected_count(room, now) for room in rooms.values())
+
+
 class DuelHandler(SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=str(ROOT), **kwargs)
@@ -126,10 +134,13 @@ class DuelHandler(SimpleHTTPRequestHandler):
         for data in room["players"].values():
             if now - data["last_seen"] > 20:
                 data["connected"] = False
+        room_users = connected_count(room, now)
         return {
             "room": room["code"],
             "you": room["players"][player],
             "rival": room["players"][rival],
+            "roomUsers": room_users,
+            "serverUsers": server_connected_count(now),
             "events": room["events"],
             "winner": room["winner"],
         }

@@ -473,6 +473,7 @@
         <button id="hostRoom" type="button">Host</button>
         <button id="joinRoom" type="button">Join</button>
       </div>
+      <div class="duel-log" id="lobbyCount">Players: 0/2 in room - Online: 0</div>
       <div class="duel-log" id="duelLog">Ready.</div>
     </section>
 
@@ -492,6 +493,8 @@
       <section class="duel" aria-label="Online duel">
         <div class="duel-row">
           <span class="room-pill">Room <span id="roomBadge">ARCANE</span></span>
+          <span class="room-pill">Players <span id="roomUsers">0</span>/2</span>
+          <span class="room-pill">Online <span id="serverUsers">0</span></span>
           <button class="leave-button" id="leaveRoom" type="button">Lobby</button>
         </div>
         <div class="duel-bars">
@@ -541,8 +544,11 @@
     const joinRoomBtn = document.getElementById("joinRoom");
     const leaveRoomBtn = document.getElementById("leaveRoom");
     const duelLog = document.getElementById("duelLog");
+    const lobbyCount = document.getElementById("lobbyCount");
     const matchLog = document.getElementById("matchLog");
     const roomBadge = document.getElementById("roomBadge");
+    const roomUsers = document.getElementById("roomUsers");
+    const serverUsers = document.getElementById("serverUsers");
     const myHpText = document.getElementById("myHpText");
     const rivalHpText = document.getElementById("rivalHpText");
     const myHpBar = document.getElementById("myHpBar");
@@ -637,6 +643,7 @@
       setDuelLog(message);
       clearPattern();
       setHp(100, 100);
+      setPlayerCounts(0, 0);
     }
 
     function showGame() {
@@ -649,6 +656,12 @@
       rivalHpText.textContent = rivalHp;
       myHpBar.style.width = Math.max(0, Math.min(100, myHp)) + "%";
       rivalHpBar.style.width = Math.max(0, Math.min(100, rivalHp)) + "%";
+    }
+
+    function setPlayerCounts(roomCount = 0, serverCount = 0) {
+      roomUsers.textContent = roomCount;
+      serverUsers.textContent = serverCount;
+      lobbyCount.textContent = "Players: " + roomCount + "/2 in room - Online: " + serverCount;
     }
 
     function damageForCounts(counts) {
@@ -669,6 +682,7 @@
       try {
         const room = cleanRoomCode();
         roomCodeInput.value = room;
+        setDuelLog("Connecting. If Render is asleep, this can take a moment.");
         const joined = await api("/api/join", { room, role, reset: role === "host" });
         duel.room = joined.room;
         duel.player = joined.player;
@@ -677,12 +691,13 @@
         roomBadge.textContent = duel.room;
         showGame();
         setHp(joined.you.hp, joined.rival.hp);
+        setPlayerCounts(joined.roomUsers, joined.serverUsers);
         setMatchLog("Room " + duel.room + " joined as " + duel.player.toUpperCase() + ". Waiting for rival.");
         if (duel.poll) clearInterval(duel.poll);
         await pollDuel();
         duel.poll = setInterval(pollDuel, 900);
       } catch (error) {
-        setDuelLog("Online server not running. Try again after the host wakes up.");
+        setDuelLog("Could not join yet. Wait a few seconds and press Host or Join again.");
       }
     }
 
@@ -691,6 +706,7 @@
       try {
         const state = await api("/api/state?room=" + encodeURIComponent(duel.room) + "&player=" + encodeURIComponent(duel.player));
         setHp(state.you.hp, state.rival.hp);
+        setPlayerCounts(state.roomUsers, state.serverUsers);
         if (state.winner) {
           duel.matchOver = true;
           gameScene.classList.add("match-over");
