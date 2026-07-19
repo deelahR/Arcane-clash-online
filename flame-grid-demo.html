@@ -393,10 +393,9 @@
         <div class="spell"><b>Flame</b><span>7-2-9-5-7</span></div>
         <div class="spell"><b>Frost</b><span>2-4-8-6-2</span></div>
         <div class="spell"><b>Storm</b><span>9-8-7-4-1-2-3-6-5</span></div>
-        <div class="spell"><b>Water</b><span>6-8-4-7-5-9-6</span></div>
+        <div class="spell"><b>Water</b><span>7-4-5-6-9-5-7</span></div>
         <div class="spell"><b>Lightning</b><span>2-4-5-6-8</span></div>
         <div class="spell"><b>Earth</b><span>7-8-9-6-3</span></div>
-        <div class="spell"><b>Void</b><span>1-5-9-5-3</span></div>
       </div>
 
       <div class="row">
@@ -479,7 +478,7 @@
         name: "Water",
         level: 1,
         color: "#4fb7ff",
-        sequence: [6, 8, 4, 7, 5, 9, 6],
+        sequence: [7, 4, 5, 6, 9, 5, 7],
         counts: [1, 0, 0, 0],
       },
       {
@@ -496,14 +495,6 @@
         level: 1,
         color: "#88d071",
         sequence: [7, 8, 9, 6, 3],
-        counts: [1, 0, 0, 0],
-      },
-      {
-        id: "void1",
-        name: "Void",
-        level: 1,
-        color: "#c68cff",
-        sequence: [1, 5, 9, 5, 3],
         counts: [1, 0, 0, 0],
       },
     ].map((spell) => ({ ...spell, edges: edgeBag(spell.sequence) }));
