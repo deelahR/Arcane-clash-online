@@ -467,11 +467,11 @@
   <main>
     <section class="scene lobby-scene active" id="lobbyScene" aria-label="Duel lobby">
       <h1 class="lobby-title">Arcane Clash</h1>
-      <p class="lobby-copy">Enter a room code, then host or join a 1v1 spell duel.</p>
+      <p class="lobby-copy">Enter a room code, then choose your player side.</p>
       <div class="duel-row">
         <input id="roomCode" aria-label="Room code" maxlength="8" value="ARCANE">
-        <button id="hostRoom" type="button">Host</button>
-        <button id="joinRoom" type="button">Join</button>
+        <button id="hostRoom" type="button">Player 1</button>
+        <button id="joinRoom" type="button">Player 2</button>
       </div>
       <div class="duel-log" id="lobbyCount">Players: 0/2 in room - Online: 0</div>
       <div class="duel-log" id="duelLog">Ready.</div>
@@ -697,7 +697,7 @@
         await pollDuel();
         duel.poll = setInterval(pollDuel, 900);
       } catch (error) {
-        setDuelLog("Could not join yet. Wait a few seconds and press Host or Join again.");
+        setDuelLog("Could not enter yet. Wait a few seconds and choose Player 1 or Player 2 again.");
       }
     }
 
