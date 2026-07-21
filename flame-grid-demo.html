@@ -165,6 +165,47 @@
       transition: width 220ms ease;
     }
 
+    .timer {
+      border: 1px solid var(--line);
+      background: #12100d;
+      border-radius: 8px;
+      padding: 9px 10px;
+      margin: 10px 0;
+      display: grid;
+      gap: 6px;
+    }
+
+    .timer-top {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      color: var(--muted);
+      font-size: 0.88rem;
+      font-weight: 800;
+    }
+
+    .timer-count {
+      color: #ffd166;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .timer-track {
+      height: 10px;
+      border-radius: 999px;
+      background: #352820;
+      border: 1px solid #4d3b2f;
+      overflow: hidden;
+    }
+
+    .timer-fill {
+      display: block;
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #ff6a2a, #ffd166);
+      box-shadow: 0 0 16px rgba(255, 106, 42, 0.65);
+      transition: width 90ms linear;
+    }
+
     .seal {
       position: relative;
       width: min(92vw, 520px);
@@ -390,6 +431,14 @@
 
       <div class="note" id="matchLog">Waiting for round.</div>
 
+      <div class="timer" aria-label="Round timer">
+        <div class="timer-top">
+          <span id="roundLabel">Round -</span>
+          <span class="timer-count" id="timerText">5.0s</span>
+        </div>
+        <div class="timer-track"><span class="timer-fill" id="timerFill"></span></div>
+      </div>
+
       <section class="seal" id="seal" aria-label="spell drawing seal">
         <svg class="seal-svg" viewBox="0 0 100 100" aria-hidden="true">
           <circle class="ring" cx="50" cy="50" r="38"></circle>
@@ -429,6 +478,9 @@
     const lobbyCount = document.getElementById("lobbyCount");
     const duelLog = document.getElementById("duelLog");
     const matchLog = document.getElementById("matchLog");
+    const roundLabel = document.getElementById("roundLabel");
+    const timerText = document.getElementById("timerText");
+    const timerFill = document.getElementById("timerFill");
     const roomBadge = document.getElementById("roomBadge");
     const roleBadge = document.getElementById("roleBadge");
     const youHpText = document.getElementById("youHpText");
@@ -631,11 +683,24 @@
       if (!latestState || duel.matchOver) return;
       if ((latestState.roomUsers || 0) < 2) {
         matchLog.textContent = `Room ${latestState.room} ready. Waiting for rival.`;
+        roundLabel.textContent = "Waiting";
+        timerText.textContent = "5.0s";
+        timerFill.style.width = "0%";
         return;
       }
-      if (!latestState.round) return;
+      if (!latestState.round) {
+        roundLabel.textContent = "Next round";
+        timerText.textContent = "0.0s";
+        timerFill.style.width = "0%";
+        return;
+      }
       const left = roundRemaining();
+      const total = latestState.rules ? latestState.rules.roundSeconds : 5;
+      const percent = Math.max(0, Math.min(100, (left / total) * 100));
       const submitText = latestState.round.youSubmitted || submittedRoundId === latestState.round.id ? "Spell locked." : "Draw now.";
+      roundLabel.textContent = `Round ${latestState.round.id}`;
+      timerText.textContent = `${left.toFixed(1)}s`;
+      timerFill.style.width = `${percent}%`;
       matchLog.textContent = `Round ${latestState.round.id} - ${left.toFixed(1)}s. ${submitText}`;
     }
 
@@ -683,7 +748,7 @@
         showGame();
         updateState(joined);
         if (duel.poll) clearInterval(duel.poll);
-        duel.poll = setInterval(pollDuel, 900);
+        duel.poll = setInterval(pollDuel, 500);
       } catch (error) {
         duelLog.textContent = "Online server not running. Try again after the host wakes up.";
         lobbyCount.textContent = "Players: 0/2 in room - Online: 0";

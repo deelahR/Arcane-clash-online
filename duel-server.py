@@ -159,6 +159,9 @@ class DuelHandler(SimpleHTTPRequestHandler):
             query = urllib.parse.parse_qs(parsed.query)
             room = room_for(query.get("room", ["ARCANE"])[0])
             player = query.get("player", [""])[0]
+            if player in room["players"]:
+                room["players"][player]["connected"] = True
+                room["players"][player]["last_seen"] = time.time()
             self.send_json(self.state_payload(room, player))
             return
         super().do_GET()
