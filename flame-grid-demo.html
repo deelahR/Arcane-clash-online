@@ -292,29 +292,43 @@
 
     .spell-list {
       display: grid;
-      grid-template-columns: repeat(5, minmax(0, 1fr));
-      gap: 6px;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
       margin-top: 10px;
     }
 
     .spell {
       border: 1px solid var(--line);
       border-radius: 8px;
-      padding: 7px 6px;
       background: #12100d;
-      min-height: 46px;
-      display: grid;
-      align-content: center;
-      gap: 2px;
+      overflow: hidden;
+    }
+
+    .spell img {
+      display: block;
+      width: 100%;
+      aspect-ratio: 1.2;
+      object-fit: cover;
+      object-position: center;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .spell b,
+    .spell span {
+      display: block;
+      padding: 0 7px;
     }
 
     .spell b {
-      font-size: 0.8rem;
+      padding-top: 6px;
+      font-size: 0.84rem;
     }
 
     .spell span {
       color: var(--muted);
       font-size: 0.72rem;
+      padding-bottom: 7px;
+      overflow-wrap: anywhere;
     }
 
     .match-over .seal {
@@ -390,12 +404,12 @@
       </div>
 
       <div class="spell-list" aria-label="Known spells">
-        <div class="spell"><b>Flame</b><span>7-2-9-5-7</span></div>
-        <div class="spell"><b>Frost</b><span>2-4-8-6-2</span></div>
-        <div class="spell"><b>Storm</b><span>9-8-7-4-1-2-3-6-5</span></div>
-        <div class="spell"><b>Water</b><span>7-4-5-6-9-5-7</span></div>
-        <div class="spell"><b>Lightning</b><span>2-4-5-6-8</span></div>
-        <div class="spell"><b>Earth</b><span>4-5-6-9-8-7-4</span></div>
+        <div class="spell"><img src="assets/spells/flame.png" alt="Flame spell pattern" /><b>Flame</b><span>7-2-9-5-7</span></div>
+        <div class="spell"><img src="assets/spells/frost.png" alt="Frost spell pattern" /><b>Frost</b><span>2-4-8-6-2</span></div>
+        <div class="spell"><img src="assets/spells/storm.png" alt="Storm spell pattern" /><b>Storm</b><span>9-8-7-4-1-2-3-6-5</span></div>
+        <div class="spell"><img src="assets/spells/water.png" alt="Water spell pattern" /><b>Water</b><span>7-4-5-6-9-5-7</span></div>
+        <div class="spell"><img src="assets/spells/lightning.png" alt="Lightning spell pattern" /><b>Lightning</b><span>2-4-5-6-8</span></div>
+        <div class="spell"><img src="assets/spells/earth.png" alt="Earth spell pattern" /><b>Earth</b><span>4-5-6-9-8-7-4</span></div>
       </div>
 
       <div class="row">
