@@ -379,16 +379,16 @@
 
       <div class="hud">
         <div class="fighter">
-          <b><span>You</span><span id="youHpText">100</span></b>
+          <b><span>You</span><span id="youHpText">10</span></b>
           <div class="bar"><span id="youHpBar"></span></div>
         </div>
         <div class="fighter">
-          <b><span>Rival</span><span id="rivalHpText">100</span></b>
+          <b><span>Rival</span><span id="rivalHpText">10</span></b>
           <div class="bar"><span id="rivalHpBar"></span></div>
         </div>
       </div>
 
-      <div class="note" id="matchLog">Draw a spell shape.</div>
+      <div class="note" id="matchLog">Waiting for round.</div>
 
       <section class="seal" id="seal" aria-label="spell drawing seal">
         <svg class="seal-svg" viewBox="0 0 100 100" aria-hidden="true">
@@ -453,23 +453,6 @@
         level: 1,
         color: "#ff6a2a",
         sequence: [7, 2, 9, 5, 7],
-        counts: [1, 0, 0, 0],
-      },
-      {
-        id: "flame2",
-        name: "Flame",
-        level: 2,
-        color: "#ff6a2a",
-        sequence: [7, 5, 3, 5, 9, 8, 7],
-        counts: [1, 1, 0, 0],
-      },
-      {
-        id: "flame3",
-        name: "Flame",
-        level: 3,
-        color: "#ff6a2a",
-        sequence: [7, 5, 3, 5, 9, 8, 7, 4, 5],
-        counts: [1, 1, 1, 0],
       },
       {
         id: "frost1",
@@ -477,7 +460,6 @@
         level: 1,
         color: "#79d7ff",
         sequence: [2, 4, 8, 6, 2],
-        counts: [1, 0, 0, 0],
       },
       {
         id: "storm1",
@@ -485,7 +467,6 @@
         level: 1,
         color: "#ffd25f",
         sequence: [9, 8, 7, 4, 1, 2, 3, 6, 5],
-        counts: [1, 0, 0, 0],
       },
       {
         id: "water1",
@@ -493,7 +474,6 @@
         level: 1,
         color: "#4fb7ff",
         sequence: [7, 4, 5, 6, 9, 5, 7],
-        counts: [1, 0, 0, 0],
       },
       {
         id: "lightning1",
@@ -501,7 +481,6 @@
         level: 1,
         color: "#f6ff5b",
         sequence: [2, 4, 5, 6, 8],
-        counts: [1, 0, 0, 0],
       },
       {
         id: "earth1",
@@ -509,23 +488,24 @@
         level: 1,
         color: "#88d071",
         sequence: [4, 5, 6, 9, 8, 7, 4],
-        counts: [1, 0, 0, 0],
       },
     ].map((spell) => ({ ...spell, edges: edgeBag(spell.sequence) }));
 
-    const damageValues = [10, 18, 30, 45];
+    const STARTING_LIFE = 10;
     let sequence = [];
     let drawing = false;
     let livePoint = null;
     let lastHit = null;
     let lastColor = "#ff6a2a";
     let lastResult = null;
+    let latestState = null;
+    let currentRoundId = 0;
+    let submittedRoundId = 0;
     let duel = {
       room: "",
       player: "",
       poll: null,
       lastEvent: 0,
-      lastCast: "",
       matchOver: false,
     };
 
@@ -572,10 +552,6 @@
       return matches[0] || null;
     }
 
-    function totalDamage(counts) {
-      return counts.reduce((sum, count, index) => sum + count * damageValues[index], 0);
-    }
-
     function makeDots() {
       Object.entries(positions).forEach(([id, pos]) => {
         const dot = document.createElement("div");
@@ -611,8 +587,10 @@
       duel.room = "";
       duel.player = "";
       duel.lastEvent = 0;
-      duel.lastCast = "";
       duel.matchOver = false;
+      latestState = null;
+      currentRoundId = 0;
+      submittedRoundId = 0;
       duelLog.textContent = message || "Ready.";
       clearPattern();
     }
@@ -626,15 +604,45 @@
       return (roomInput.value || "ARCANE").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 8) || "ARCANE";
     }
 
-    function setHealth(elText, elBar, value) {
-      const hp = Math.max(0, Math.min(100, Number(value) || 0));
-      elText.textContent = `${hp}`;
-      elBar.style.width = `${hp}%`;
+    function setLife(elText, elBar, value) {
+      const life = Math.max(0, Math.min(STARTING_LIFE, Number(value) || 0));
+      elText.textContent = `${life}`;
+      elBar.style.width = `${(life / STARTING_LIFE) * 100}%`;
+    }
+
+    function roundRemaining() {
+      if (!latestState || !latestState.round) return 0;
+      return Math.max(0, latestState.round.deadline - Date.now() / 1000);
+    }
+
+    function canDraw() {
+      return Boolean(
+        duel.room &&
+        !duel.matchOver &&
+        latestState &&
+        latestState.round &&
+        !latestState.round.youSubmitted &&
+        submittedRoundId !== latestState.round.id &&
+        roundRemaining() > 0
+      );
+    }
+
+    function updateTimerText() {
+      if (!latestState || duel.matchOver) return;
+      if ((latestState.roomUsers || 0) < 2) {
+        matchLog.textContent = `Room ${latestState.room} ready. Waiting for rival.`;
+        return;
+      }
+      if (!latestState.round) return;
+      const left = roundRemaining();
+      const submitText = latestState.round.youSubmitted || submittedRoundId === latestState.round.id ? "Spell locked." : "Draw now.";
+      matchLog.textContent = `Round ${latestState.round.id} - ${left.toFixed(1)}s. ${submitText}`;
     }
 
     function updateState(state) {
-      setHealth(youHpText, youHpBar, state.you.hp);
-      setHealth(rivalHpText, rivalHpBar, state.rival.hp);
+      latestState = state;
+      setLife(youHpText, youHpBar, state.you.life);
+      setLife(rivalHpText, rivalHpBar, state.rival.life);
       lobbyCount.textContent = `Players: ${state.roomUsers || 0}/2 in room - Online: ${state.serverUsers || 0}`;
       if (state.winner) {
         duel.matchOver = true;
@@ -644,16 +652,22 @@
         const won = state.winner === duel.player;
         resultText.textContent = won ? "Victory." : "Defeat.";
         matchLog.textContent = won ? "Match won." : "Match lost.";
-      } else if ((state.roomUsers || 0) < 2) {
-        matchLog.textContent = `Room ${state.room} ready. Waiting for rival.`;
-      } else if (state.events.length && state.events[state.events.length - 1].id !== duel.lastEvent) {
+        return;
+      }
+
+      if (state.events.length && state.events[state.events.length - 1].id !== duel.lastEvent) {
         const event = state.events[state.events.length - 1];
         duel.lastEvent = event.id;
-        const source = event.player === duel.player ? "You" : "Rival";
-        matchLog.textContent = `${source} cast ${event.spell} for ${event.damage} damage.`;
-      } else {
-        matchLog.textContent = `Room ${state.room} live. Draw a spell.`;
+        resultText.textContent = `Round ${event.round}: ${event.message}`;
       }
+
+      if (state.round && state.round.id !== currentRoundId) {
+        currentRoundId = state.round.id;
+        submittedRoundId = 0;
+        clearPattern();
+        resultText.textContent = `Round ${state.round.id}.`;
+      }
+      updateTimerText();
     }
 
     async function connectDuel(role) {
@@ -663,7 +677,6 @@
         duel.room = joined.room;
         duel.player = joined.player;
         duel.lastEvent = 0;
-        duel.lastCast = "";
         duel.matchOver = false;
         roomBadge.textContent = duel.room;
         roleBadge.textContent = duel.player === "p1" ? "Player 1" : "Player 2";
@@ -687,22 +700,20 @@
       }
     }
 
-    async function sendOnlineCast(match) {
+    async function submitRound(status, spell = "") {
       if (!duel.room || !duel.player || duel.matchOver) return;
-      const counts = match.spell.counts;
-      const signature = `${duel.room}:${duel.player}:${match.spell.id}:${sequence.join("-")}:${counts.join(",")}`;
-      if (signature === duel.lastCast) return;
-      duel.lastCast = signature;
+      if (!latestState || !latestState.round || submittedRoundId === latestState.round.id) return;
+      submittedRoundId = latestState.round.id;
       try {
-        const state = await api("/api/cast", {
+        const state = await api("/api/submit", {
           room: duel.room,
           player: duel.player,
-          spell: `${match.spell.name} LV${match.spell.level}`,
-          counts,
+          status,
+          spell,
         });
         updateState(state);
       } catch (error) {
-        matchLog.textContent = "Cast stayed local. Online server not running.";
+        matchLog.textContent = "Submission stayed local. Online server not running.";
       }
     }
 
@@ -781,24 +792,29 @@
       drawing = false;
       livePoint = null;
       lastHit = null;
+      if (!canDraw()) {
+        resultText.textContent = "Too late.";
+        renderPath("fail");
+        return;
+      }
       const match = scorePattern(sequence);
       if (match) {
         lastResult = match;
         lastColor = match.spell.color;
-        const damage = totalDamage(match.spell.counts);
-        resultText.textContent = `${match.spell.name} LV${match.spell.level} cast. ${damage} damage.`;
+        resultText.textContent = `${match.spell.name} locked.`;
         renderPath("success");
-        sendOnlineCast(match);
+        submitRound("valid", match.spell.name);
       } else if (sequence.length > 1) {
         resultText.textContent = "Miscast.";
         renderPath("fail");
+        submitRound("miscast");
       } else {
         clearPattern();
       }
     }
 
     seal.addEventListener("pointerdown", (event) => {
-      if (duel.matchOver) return;
+      if (!canDraw()) return;
       clearPattern();
       drawing = true;
       seal.setPointerCapture(event.pointerId);
@@ -818,6 +834,7 @@
     hostBtn.addEventListener("click", () => connectDuel("host"));
     joinBtn.addEventListener("click", () => connectDuel("join"));
     leaveBtn.addEventListener("click", () => showLobby("Choose a room for the next duel."));
+    setInterval(updateTimerText, 100);
 
     makeDots();
     clearPattern();

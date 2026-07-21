@@ -7,19 +7,32 @@ import urllib.parse
 
 
 ROOT = Path(__file__).resolve().parent
-ATTACK_VALUES = [10, 18, 30, 45]
+STARTING_LIFE = 10
+ROUND_SECONDS = 5
 rooms = {}
+
+BEATS = {
+    "Flame": {"Frost", "Storm"},
+    "Frost": {"Storm", "Water"},
+    "Storm": {"Water", "Lightning"},
+    "Water": {"Lightning", "Earth"},
+    "Lightning": {"Earth", "Flame"},
+    "Earth": {"Flame", "Frost"},
+}
 
 
 def new_room(code):
     return {
         "code": code,
         "players": {
-            "p1": {"connected": False, "hp": 100, "last_seen": 0},
-            "p2": {"connected": False, "hp": 100, "last_seen": 0},
+            "p1": {"connected": False, "life": STARTING_LIFE, "last_seen": 0},
+            "p2": {"connected": False, "life": STARTING_LIFE, "last_seen": 0},
         },
+        "round": None,
         "events": [],
         "next_event": 1,
+        "next_round": 1,
+        "next_round_at": 0,
         "winner": "",
     }
 
@@ -31,16 +44,6 @@ def room_for(code):
     return rooms[clean]
 
 
-def damage_from_counts(counts):
-    total = 0
-    for index, count in enumerate(counts[:4]):
-        try:
-            total += max(0, int(count)) * ATTACK_VALUES[index]
-        except (TypeError, ValueError):
-            continue
-    return total
-
-
 def connected_count(room, now):
     return sum(1 for data in room["players"].values() if now - data["last_seen"] <= 20)
 
@@ -49,9 +52,89 @@ def server_connected_count(now):
     return sum(connected_count(room, now) for room in rooms.values())
 
 
+def public_submission(submission):
+    if not submission:
+        return {"status": "waiting", "spell": ""}
+    return {
+        "status": submission.get("status", "waiting"),
+        "spell": submission.get("spell", ""),
+    }
+
+
+def start_round(room, now):
+    if room["winner"] or connected_count(room, now) < 2:
+        return
+    if now < room.get("next_round_at", 0):
+        return
+    if room["round"] and not room["round"].get("resolved"):
+        return
+    room["round"] = {
+        "id": room["next_round"],
+        "started_at": now,
+        "deadline": now + ROUND_SECONDS,
+        "submissions": {},
+        "resolved": False,
+    }
+    room["next_round"] += 1
+
+
+def round_result(p1, p2):
+    s1 = p1.get("status", "timeout")
+    s2 = p2.get("status", "timeout")
+    if s1 != "valid" and s2 != "valid":
+        return None, 0, "Both failed. Draw."
+    if s1 == "valid" and s2 != "valid":
+        penalty = 2 if s2 == "timeout" else 1
+        return "p2", penalty, f"{p1['spell']} wins. Player 2 loses {penalty} life."
+    if s2 == "valid" and s1 != "valid":
+        penalty = 2 if s1 == "timeout" else 1
+        return "p1", penalty, f"{p2['spell']} wins. Player 1 loses {penalty} life."
+    if p1["spell"] == p2["spell"]:
+        return None, 0, f"Both cast {p1['spell']}. Draw."
+    if p2["spell"] in BEATS.get(p1["spell"], set()):
+        return "p2", 1, f"{p1['spell']} beats {p2['spell']}. Player 2 loses 1 life."
+    if p1["spell"] in BEATS.get(p2["spell"], set()):
+        return "p1", 1, f"{p2['spell']} beats {p1['spell']}. Player 1 loses 1 life."
+    return None, 0, f"{p1['spell']} and {p2['spell']} cancel. Draw."
+
+
+def resolve_round(room, now):
+    round_data = room.get("round")
+    if not round_data or round_data.get("resolved"):
+        return
+    submissions = round_data["submissions"]
+    if len(submissions) < 2 and now < round_data["deadline"]:
+        return
+
+    p1 = submissions.get("p1", {"status": "timeout", "spell": ""})
+    p2 = submissions.get("p2", {"status": "timeout", "spell": ""})
+    loser, penalty, message = round_result(p1, p2)
+    if loser and penalty:
+        room["players"][loser]["life"] = max(0, room["players"][loser]["life"] - penalty)
+        if room["players"][loser]["life"] <= 0:
+            room["winner"] = "p2" if loser == "p1" else "p1"
+
+    event = {
+        "id": room["next_event"],
+        "round": round_data["id"],
+        "message": message,
+        "p1": public_submission(p1),
+        "p2": public_submission(p2),
+        "winner": room["winner"],
+    }
+    room["next_event"] += 1
+    room["events"].append(event)
+    room["events"] = room["events"][-10:]
+    round_data["resolved"] = True
+    room["next_round_at"] = now + 2.5
+
+
 class DuelHandler(SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=str(ROOT), **kwargs)
+
+    def log_message(self, format, *args):
+        return
 
     def send_json(self, payload, status=200):
         data = json.dumps(payload).encode("utf-8")
@@ -97,30 +180,25 @@ class DuelHandler(SimpleHTTPRequestHandler):
             self.send_json({"room": room["code"], "player": player, **self.state_payload(room, player)})
             return
 
-        if parsed.path == "/api/cast":
+        if parsed.path == "/api/submit":
             body = self.read_json()
             room = room_for(str(body.get("room", "ARCANE")))
             player = str(body.get("player", ""))
             if player not in room["players"]:
                 self.send_json({"error": "unknown player"}, 400)
                 return
-            rival = "p2" if player == "p1" else "p1"
             room["players"][player]["connected"] = True
             room["players"][player]["last_seen"] = time.time()
-            damage = damage_from_counts(body.get("counts", []))
-            if damage > 0 and not room["winner"]:
-                room["players"][rival]["hp"] = max(0, room["players"][rival]["hp"] - damage)
-                if room["players"][rival]["hp"] <= 0:
-                    room["winner"] = player
-                event = {
-                    "id": room["next_event"],
-                    "player": player,
-                    "spell": str(body.get("spell", "Spell")),
-                    "damage": damage,
-                }
-                room["next_event"] += 1
-                room["events"].append(event)
-                room["events"] = room["events"][-8:]
+            now = time.time()
+            resolve_round(room, now)
+            round_data = room.get("round")
+            if not room["winner"] and round_data and not round_data.get("resolved") and now <= round_data["deadline"]:
+                status = str(body.get("status", "miscast"))
+                if status not in {"valid", "miscast"}:
+                    status = "miscast"
+                spell = str(body.get("spell", "")) if status == "valid" else ""
+                round_data["submissions"].setdefault(player, {"status": status, "spell": spell})
+                resolve_round(room, now)
             self.send_json(self.state_payload(room, player))
             return
 
@@ -134,15 +212,33 @@ class DuelHandler(SimpleHTTPRequestHandler):
         for data in room["players"].values():
             if now - data["last_seen"] > 20:
                 data["connected"] = False
+        resolve_round(room, now)
+        start_round(room, now)
+        round_data = room.get("round")
         room_users = connected_count(room, now)
+        payload_round = None
+        if round_data and not round_data.get("resolved"):
+            payload_round = {
+                "id": round_data["id"],
+                "deadline": round_data["deadline"],
+                "remaining": max(0, round_data["deadline"] - now),
+                "youSubmitted": player in round_data["submissions"],
+                "rivalSubmitted": rival in round_data["submissions"],
+            }
         return {
             "room": room["code"],
             "you": room["players"][player],
             "rival": room["players"][rival],
+            "round": payload_round,
             "roomUsers": room_users,
             "serverUsers": server_connected_count(now),
             "events": room["events"],
             "winner": room["winner"],
+            "rules": {
+                "startingLife": STARTING_LIFE,
+                "roundSeconds": ROUND_SECONDS,
+                "beats": {spell: sorted(beats) for spell, beats in BEATS.items()},
+            },
         }
 
 
