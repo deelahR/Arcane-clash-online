@@ -1052,7 +1052,7 @@
       data.rooms.forEach((room) => {
         const item = document.createElement("div");
         item.className = "room-card";
-        const canDelete = owned.has(room.code);
+        const canDelete = owned.has(room.code) || room.users === 0;
         item.innerHTML = `
           <div><b>${room.code}</b><span>${room.users}/2 ${room.open ? "open" : "busy"} · ${room.host || "Player 1"}</span></div>
           <div class="room-actions">
