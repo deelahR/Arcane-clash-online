@@ -152,6 +152,19 @@
       font-size: 0.84rem;
     }
 
+    .room-actions {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+      flex-shrink: 0;
+    }
+
+    .room-actions .btn {
+      min-height: 34px;
+      padding: 0 10px;
+      font-size: 0.84rem;
+    }
+
     .hud {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -508,6 +521,9 @@
         </div>
       </div>
       <div class="row">
+        <input id="playerNameInput" maxlength="18" value="Mage" aria-label="Player name" />
+      </div>
+      <div class="row">
         <input id="roomInput" maxlength="8" value="ARCANE" aria-label="Room code" />
         <button class="btn primary" id="hostBtn">Create Room</button>
         <button class="btn" id="joinBtn">Join Code</button>
@@ -523,16 +539,19 @@
           <h1>Magic Seal Duel</h1>
           <p class="sub"><span id="roomBadge">ARCANE</span> · <span id="roleBadge">Player</span></p>
         </div>
-        <button class="btn" id="leaveBtn">Lobby</button>
+        <div class="row">
+          <button class="btn" id="deleteRoomBtn">Delete Room</button>
+          <button class="btn" id="leaveBtn">Lobby</button>
+        </div>
       </div>
 
       <div class="hud">
         <div class="fighter">
-          <b><span>You</span><span id="youHpText">10</span></b>
+          <b><span id="youNameText">You</span><span id="youHpText">10</span></b>
           <div class="bar"><span id="youHpBar"></span></div>
         </div>
         <div class="fighter">
-          <b><span>Rival</span><span id="rivalHpText">10</span></b>
+          <b><span id="rivalNameText">Rival</span><span id="rivalHpText">10</span></b>
           <div class="bar"><span id="rivalHpBar"></span></div>
         </div>
       </div>
@@ -590,9 +609,11 @@
     const lobby = document.getElementById("lobby");
     const game = document.getElementById("game");
     const roomInput = document.getElementById("roomInput");
+    const playerNameInput = document.getElementById("playerNameInput");
     const hostBtn = document.getElementById("hostBtn");
     const joinBtn = document.getElementById("joinBtn");
     const leaveBtn = document.getElementById("leaveBtn");
+    const deleteRoomBtn = document.getElementById("deleteRoomBtn");
     const clearBtn = document.getElementById("clearBtn");
     const roomList = document.getElementById("roomList");
     const lobbyCount = document.getElementById("lobbyCount");
@@ -603,6 +624,8 @@
     const timerFill = document.getElementById("timerFill");
     const roomBadge = document.getElementById("roomBadge");
     const roleBadge = document.getElementById("roleBadge");
+    const youNameText = document.getElementById("youNameText");
+    const rivalNameText = document.getElementById("rivalNameText");
     const youHpText = document.getElementById("youHpText");
     const rivalHpText = document.getElementById("rivalHpText");
     const youHpBar = document.getElementById("youHpBar");
@@ -781,8 +804,32 @@
       return (roomInput.value || "ARCANE").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 8) || "ARCANE";
     }
 
+    function playerName() {
+      const name = (playerNameInput.value || "Mage").trim().slice(0, 18) || "Mage";
+      localStorage.setItem("arcanePlayerName", name);
+      return name;
+    }
+
     function randomRoomCode() {
       return "ROOM" + Math.floor(1000 + Math.random() * 9000);
+    }
+
+    function createdRooms() {
+      try {
+        return JSON.parse(localStorage.getItem("arcaneCreatedRooms") || "[]");
+      } catch (error) {
+        return [];
+      }
+    }
+
+    function saveCreatedRoom(code) {
+      const rooms = new Set(createdRooms());
+      rooms.add(code);
+      localStorage.setItem("arcaneCreatedRooms", JSON.stringify([...rooms]));
+    }
+
+    function forgetCreatedRoom(code) {
+      localStorage.setItem("arcaneCreatedRooms", JSON.stringify(createdRooms().filter((room) => room !== code)));
     }
 
     function renderRooms(data) {
@@ -793,16 +840,25 @@
         return;
       }
       roomList.innerHTML = "";
+      const owned = new Set(createdRooms());
       data.rooms.forEach((room) => {
-        const item = document.createElement("button");
+        const item = document.createElement("div");
         item.className = "room-card";
-        item.type = "button";
-        item.disabled = !room.open;
-        item.innerHTML = `<b>${room.code}</b><span>${room.users}/2 ${room.open ? "open" : "busy"}</span>`;
-        item.addEventListener("click", () => {
+        const canDelete = owned.has(room.code);
+        item.innerHTML = `
+          <div><b>${room.code}</b><span>${room.users}/2 ${room.open ? "open" : "busy"} · ${room.host || "Player 1"}</span></div>
+          <div class="room-actions">
+            <button class="btn" type="button" ${room.open ? "" : "disabled"}>Join</button>
+            ${canDelete ? '<button class="btn" type="button" data-delete="1">Delete</button>' : ""}
+          </div>`;
+        item.querySelector(".room-actions .btn").addEventListener("click", () => {
           roomInput.value = room.code;
           connectDuel("join");
         });
+        const deleteBtn = item.querySelector("[data-delete]");
+        if (deleteBtn) {
+          deleteBtn.addEventListener("click", () => deleteCreatedRoom(room.code, true));
+        }
         roomList.appendChild(item);
       });
     }
@@ -813,6 +869,22 @@
         renderRooms(await api("/api/rooms"));
       } catch (error) {
         lobbyCount.textContent = "Online server not running. Try again after the host wakes up.";
+      }
+    }
+
+    async function deleteCreatedRoom(code, stayLobby = false) {
+      try {
+        await api("/api/delete_room", { room: code, player: "p1" });
+        forgetCreatedRoom(code);
+        if (duel.room === code) {
+          showLobby("Room deleted.");
+        } else if (stayLobby) {
+          duelLog.textContent = "Room deleted.";
+          refreshRooms();
+        }
+      } catch (error) {
+        duelLog.textContent = "Only the room creator can delete this room.";
+        matchLog.textContent = "Only the room creator can delete this room.";
       }
     }
 
@@ -868,6 +940,8 @@
       latestState = state;
       setLife(youHpText, youHpBar, state.you.life);
       setLife(rivalHpText, rivalHpBar, state.rival.life);
+      youNameText.textContent = state.you.name || "You";
+      rivalNameText.textContent = state.rival.name || "Rival";
       lobbyCount.textContent = `Players: ${state.roomUsers || 0}/2 in room - Online: ${state.serverUsers || 0}`;
       if (state.winner) {
         duel.matchOver = true;
@@ -900,13 +974,15 @@
     async function connectDuel(role) {
       try {
         duelLog.textContent = "Contacting online server...";
-        const joined = await api("/api/join", { room: roomCode(), role, reset: role === "host" });
+        const joined = await api("/api/join", { room: roomCode(), role, name: playerName(), reset: role === "host" });
         duel.room = joined.room;
         duel.player = joined.player;
         duel.lastEvent = 0;
         duel.matchOver = false;
         roomBadge.textContent = duel.room;
-        roleBadge.textContent = duel.player === "p1" ? "Player 1" : "Player 2";
+        roleBadge.textContent = `${joined.you.name || playerName()} · ${duel.player === "p1" ? "Player 1" : "Player 2"}`;
+        deleteRoomBtn.style.display = duel.player === "p1" ? "" : "none";
+        if (role === "host" && duel.player === "p1") saveCreatedRoom(joined.room);
         showGame();
         updateState(joined);
         if (duel.poll) clearInterval(duel.poll);
@@ -1081,11 +1157,14 @@
     hostBtn.addEventListener("click", () => connectDuel("host"));
     joinBtn.addEventListener("click", () => connectDuel("join"));
     leaveBtn.addEventListener("click", () => showLobby("Choose a room for the next duel."));
+    deleteRoomBtn.addEventListener("click", () => deleteCreatedRoom(duel.room));
     setInterval(updateTimerText, 100);
     setInterval(refreshRooms, 1800);
     hostBtn.addEventListener("click", () => {
       roomInput.value = randomRoomCode();
     }, { capture: true });
+    playerNameInput.value = localStorage.getItem("arcanePlayerName") || "Mage";
+    playerNameInput.addEventListener("input", playerName);
     refreshRooms();
 
     makeDots();

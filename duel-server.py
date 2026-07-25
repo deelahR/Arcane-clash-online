@@ -25,8 +25,8 @@ def new_room(code):
     return {
         "code": code,
         "players": {
-            "p1": {"connected": False, "life": STARTING_LIFE, "last_seen": 0},
-            "p2": {"connected": False, "life": STARTING_LIFE, "last_seen": 0},
+            "p1": {"connected": False, "life": STARTING_LIFE, "last_seen": 0, "name": "Player 1"},
+            "p2": {"connected": False, "life": STARTING_LIFE, "last_seen": 0, "name": "Player 2"},
         },
         "round": None,
         "events": [],
@@ -42,6 +42,11 @@ def room_for(code):
     if clean not in rooms:
         rooms[clean] = new_room(clean)
     return rooms[clean]
+
+
+def clean_name(value, fallback):
+    name = "".join(ch for ch in str(value).strip() if ch.isalnum() or ch in " _-")[:18].strip()
+    return name or fallback
 
 
 def connected_count(room, now):
@@ -64,6 +69,7 @@ def room_summaries(now):
             "open": users < 2 and not room["winner"],
             "winner": room["winner"],
             "round": room["round"]["id"] if room.get("round") else 0,
+            "host": room["players"]["p1"].get("name", "Player 1"),
         })
     summaries.sort(key=lambda item: (not item["open"], item["code"]))
     return summaries[:12]
@@ -206,7 +212,22 @@ class DuelHandler(SimpleHTTPRequestHandler):
                 player = "p2" if player == "p1" else "p1"
             room["players"][player]["connected"] = True
             room["players"][player]["last_seen"] = time.time()
+            room["players"][player]["name"] = clean_name(body.get("name", ""), "Player 1" if player == "p1" else "Player 2")
             self.send_json({"room": room["code"], "player": player, **self.state_payload(room, player)})
+            return
+
+        if parsed.path == "/api/delete_room":
+            body = self.read_json()
+            room_code = "".join(ch for ch in str(body.get("room", "ARCANE")).upper() if ch.isalnum())[:8] or "ARCANE"
+            player = str(body.get("player", ""))
+            if room_code not in rooms:
+                self.send_json({"deleted": False, "message": "Room not found."})
+                return
+            if player != "p1":
+                self.send_json({"deleted": False, "message": "Only the room creator can delete this room."}, 403)
+                return
+            del rooms[room_code]
+            self.send_json({"deleted": True, "room": room_code})
             return
 
         if parsed.path == "/api/submit":
