@@ -292,6 +292,10 @@
       overflow: hidden;
     }
 
+    .seal.phase-hidden {
+      display: none;
+    }
+
     .seal-svg {
       position: absolute;
       inset: 0;
@@ -400,6 +404,116 @@
       font-size: clamp(0.98rem, 3.4vw, 1.22rem);
       color: #ffd166;
       text-shadow: 0 0 13px rgba(255, 106, 42, 0.85);
+    }
+
+    .battle-reveal {
+      display: none;
+      width: min(92vw, 520px);
+      margin: 8px auto 0;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background:
+        radial-gradient(circle at center, rgba(255, 209, 102, 0.16), transparent 34%),
+        #15120f;
+      padding: 14px;
+      overflow: hidden;
+    }
+
+    .battle-reveal.phase-on {
+      display: block;
+      animation: revealIn 260ms ease both;
+    }
+
+    .versus {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+      gap: 10px;
+      align-items: center;
+    }
+
+    .combatant {
+      display: grid;
+      gap: 7px;
+      text-align: center;
+      min-width: 0;
+    }
+
+    .combatant img,
+    .spell-placeholder {
+      width: min(34vw, 150px);
+      aspect-ratio: 1;
+      margin: 0 auto;
+      border-radius: 50%;
+      border: 1px solid #806c50;
+      background: #100f0d;
+      box-shadow: 0 0 24px rgba(255, 209, 102, 0.22);
+      object-fit: cover;
+    }
+
+    .spell-placeholder {
+      display: grid;
+      place-items: center;
+      color: #ffd166;
+      font-weight: 950;
+      font-size: 0.86rem;
+    }
+
+    .combatant b {
+      font-size: 0.82rem;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .combatant span {
+      color: var(--muted);
+      font-size: 0.76rem;
+    }
+
+    .vs-mark {
+      color: #ffd166;
+      font-weight: 950;
+      font-size: clamp(1.3rem, 5vw, 2rem);
+      text-shadow: 0 0 16px rgba(255, 106, 42, 0.8);
+    }
+
+    .combatant.win img,
+    .combatant.win .spell-placeholder {
+      animation: winnerStrike 780ms ease both;
+    }
+
+    .combatant.lose img,
+    .combatant.lose .spell-placeholder {
+      animation: loserHit 780ms ease both;
+    }
+
+    .combatant.draw img,
+    .combatant.draw .spell-placeholder {
+      animation: drawPulse 700ms ease both;
+    }
+
+    @keyframes revealIn {
+      from { opacity: 0; transform: scale(0.96); }
+      to { opacity: 1; transform: scale(1); }
+    }
+
+    @keyframes winnerStrike {
+      0% { transform: scale(0.92); filter: brightness(0.9); }
+      45% { transform: scale(1.14); filter: brightness(1.35); }
+      100% { transform: scale(1.04); filter: brightness(1.08); }
+    }
+
+    @keyframes loserHit {
+      0%, 100% { transform: translateX(0) scale(0.94); opacity: 0.72; }
+      25% { transform: translateX(-6px) scale(0.92); opacity: 0.48; }
+      50% { transform: translateX(5px) scale(0.9); opacity: 0.58; }
+      75% { transform: translateX(-3px) scale(0.92); opacity: 0.5; }
+    }
+
+    @keyframes drawPulse {
+      0% { transform: scale(0.94); opacity: 0.72; }
+      50% { transform: scale(1.06); opacity: 1; }
+      100% { transform: scale(1); opacity: 0.84; }
     }
 
     .spell-list {
@@ -537,6 +651,10 @@
       }
       .hud { grid-template-columns: 1fr 1fr; }
       .round-panel { grid-template-columns: 1fr; }
+      .battle-reveal { padding: 10px; }
+      .versus { gap: 6px; }
+      .combatant img,
+      .spell-placeholder { width: min(35vw, 122px); }
       .dot {
         width: 46px;
         height: 46px;
@@ -624,6 +742,22 @@
         </svg>
       </section>
 
+      <section class="battle-reveal" id="battleReveal" aria-label="spell battle reveal">
+        <div class="versus">
+          <div class="combatant" id="youReveal">
+            <img id="youRevealImg" src="assets/elements/flame.jpeg" alt="Your spell" />
+            <b id="youRevealName">You</b>
+            <span id="youRevealSpell">Waiting</span>
+          </div>
+          <div class="vs-mark">VS</div>
+          <div class="combatant" id="rivalReveal">
+            <img id="rivalRevealImg" src="assets/elements/frost.jpeg" alt="Rival spell" />
+            <b id="rivalRevealName">Rival</b>
+            <span id="rivalRevealSpell">Waiting</span>
+          </div>
+        </div>
+      </section>
+
       <div class="spell-cycle" aria-label="Spell strength cycle">
         <div class="cycle-arrow"></div>
         <div class="cycle-core">Strength follows the circle</div>
@@ -676,6 +810,15 @@
     const youHpBar = document.getElementById("youHpBar");
     const rivalHpBar = document.getElementById("rivalHpBar");
     const seal = document.getElementById("seal");
+    const battleReveal = document.getElementById("battleReveal");
+    const youReveal = document.getElementById("youReveal");
+    const rivalReveal = document.getElementById("rivalReveal");
+    const youRevealImg = document.getElementById("youRevealImg");
+    const rivalRevealImg = document.getElementById("rivalRevealImg");
+    const youRevealName = document.getElementById("youRevealName");
+    const rivalRevealName = document.getElementById("rivalRevealName");
+    const youRevealSpell = document.getElementById("youRevealSpell");
+    const rivalRevealSpell = document.getElementById("rivalRevealSpell");
     const pathLayer = document.getElementById("pathLayer");
     const patternText = document.getElementById("patternText");
     const resultText = document.getElementById("resultText");
@@ -732,6 +875,15 @@
     ].map((spell) => ({ ...spell, edges: edgeBag(spell.sequence) }));
 
     const STARTING_LIFE = 10;
+    const elementImages = {
+      Flame: "assets/elements/flame.jpeg",
+      Frost: "assets/elements/frost.jpeg",
+      Storm: "assets/elements/storm.jpeg",
+      Water: "assets/elements/water.jpeg",
+      Lightning: "assets/elements/lightning.jpeg",
+      Earth: "assets/elements/earth.jpeg",
+    };
+    const failedSpellImage = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'%3E%3Crect width='120' height='120' fill='%23100f0d'/%3E%3Ccircle cx='60' cy='60' r='42' fill='none' stroke='%23ff3b4f' stroke-width='5' stroke-dasharray='10 8'/%3E%3Cpath d='M38 38l44 44M82 38L38 82' stroke='%23ffd166' stroke-width='8' stroke-linecap='round'/%3E%3C/svg%3E";
     let sequence = [];
     let drawing = false;
     let livePoint = null;
@@ -836,6 +988,7 @@
       attemptedRoundId = 0;
       hadMiscastThisRound = false;
       duelLog.textContent = message || "Ready.";
+      showDrawPhase();
       clearPattern();
       refreshRooms();
     }
@@ -979,6 +1132,64 @@
       timerText.textContent = `${left.toFixed(1)}s`;
       timerFill.style.width = `${percent}%`;
       matchLog.textContent = `Round ${latestState.round.id} - ${left.toFixed(1)}s. ${submitText}`;
+      const hasCurrentRoundEvent = latestState.events.some((event) => event.round === latestState.round.id);
+      if (left <= 0 && !hasCurrentRoundEvent) {
+        showResolvingPhase();
+      }
+    }
+
+    function showDrawPhase() {
+      seal.classList.remove("phase-hidden");
+      battleReveal.classList.remove("phase-on");
+    }
+
+    function showRevealPhase() {
+      seal.classList.add("phase-hidden");
+      battleReveal.classList.add("phase-on");
+    }
+
+    function showResolvingPhase() {
+      setRevealSide(youReveal, youRevealImg, youRevealSpell, youRevealName, latestState.you.name || "You", { status: "waiting", spell: "" }, "draw");
+      setRevealSide(rivalReveal, rivalRevealImg, rivalRevealSpell, rivalRevealName, latestState.rival.name || "Rival", { status: "waiting", spell: "" }, "draw");
+      youRevealSpell.textContent = "Resolving";
+      rivalRevealSpell.textContent = "Resolving";
+      showRevealPhase();
+    }
+
+    function statusLabel(submission) {
+      if (!submission) return "Timeout";
+      if (submission.status === "valid") return submission.spell;
+      if (submission.status === "miscast") return "Miscast";
+      if (submission.status === "timeout") return "Timeout";
+      if (submission.status === "waiting") return "Resolving";
+      return "Failed";
+    }
+
+    function setRevealSide(root, img, spellText, nameText, name, submission, stateClass) {
+      root.classList.remove("win", "lose", "draw");
+      root.classList.add(stateClass);
+      nameText.textContent = name;
+      spellText.textContent = statusLabel(submission);
+      const spell = submission && submission.status === "valid" ? submission.spell : "";
+      if (spell && elementImages[spell]) {
+        img.src = elementImages[spell];
+        img.alt = `${spell} spell`;
+      } else {
+        img.src = failedSpellImage;
+        img.alt = statusLabel(submission);
+      }
+    }
+
+    function revealOutcome(event) {
+      const youSubmission = duel.player === "p1" ? event.p1 : event.p2;
+      const rivalSubmission = duel.player === "p1" ? event.p2 : event.p1;
+      const youLost = event.message.includes(duel.player === "p1" ? "Player 1 loses" : "Player 2 loses");
+      const rivalLost = event.message.includes(duel.player === "p1" ? "Player 2 loses" : "Player 1 loses");
+      const youState = youLost ? "lose" : rivalLost ? "win" : "draw";
+      const rivalState = rivalLost ? "lose" : youLost ? "win" : "draw";
+      setRevealSide(youReveal, youRevealImg, youRevealSpell, youRevealName, latestState.you.name || "You", youSubmission, youState);
+      setRevealSide(rivalReveal, rivalRevealImg, rivalRevealSpell, rivalRevealName, latestState.rival.name || "Rival", rivalSubmission, rivalState);
+      showRevealPhase();
     }
 
     function updateState(state) {
@@ -1003,6 +1214,7 @@
         const event = state.events[state.events.length - 1];
         duel.lastEvent = event.id;
         resultText.textContent = `Round ${event.round}: ${event.message}`;
+        revealOutcome(event);
       }
 
       if (state.round && state.round.id !== currentRoundId) {
@@ -1010,6 +1222,7 @@
         submittedRoundId = 0;
         attemptedRoundId = 0;
         hadMiscastThisRound = false;
+        showDrawPhase();
         clearPattern();
         resultText.textContent = `Round ${state.round.id}.`;
       }
