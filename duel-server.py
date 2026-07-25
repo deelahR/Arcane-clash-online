@@ -12,12 +12,12 @@ ROUND_SECONDS = 5
 rooms = {}
 
 BEATS = {
-    "Flame": {"Frost", "Storm"},
-    "Frost": {"Storm", "Water"},
-    "Storm": {"Water", "Lightning"},
-    "Water": {"Lightning", "Earth"},
-    "Lightning": {"Earth", "Flame"},
-    "Earth": {"Flame", "Frost"},
+    "Flame": {"Frost"},
+    "Frost": {"Storm"},
+    "Storm": {"Lightning"},
+    "Lightning": {"Earth"},
+    "Earth": {"Water"},
+    "Water": {"Flame"},
 }
 
 
