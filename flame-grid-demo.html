@@ -901,6 +901,7 @@
     let lastColor = "#ff6a2a";
     let lastResult = null;
     let latestState = null;
+    let latestStateReceivedAt = 0;
     let currentRoundId = 0;
     let submittedRoundId = 0;
     let attemptedRoundId = 0;
@@ -993,6 +994,7 @@
       duel.lastEvent = 0;
       duel.matchOver = false;
       latestState = null;
+      latestStateReceivedAt = 0;
       currentRoundId = 0;
       submittedRoundId = 0;
       attemptedRoundId = 0;
@@ -1104,7 +1106,8 @@
 
     function roundRemaining() {
       if (!latestState || !latestState.round) return 0;
-      return Math.max(0, latestState.round.deadline - Date.now() / 1000);
+      const elapsed = Date.now() / 1000 - latestStateReceivedAt;
+      return Math.max(0, latestState.round.remaining - elapsed);
     }
 
     function canDraw() {
@@ -1209,6 +1212,7 @@
 
     function updateState(state) {
       latestState = state;
+      latestStateReceivedAt = Date.now() / 1000;
       setLife(youHpText, youHpBar, state.you.life);
       setLife(rivalHpText, rivalHpBar, state.rival.life);
       youNameText.textContent = state.you.name || "You";
@@ -1411,6 +1415,7 @@
 
     seal.addEventListener("pointerdown", (event) => {
       if (!canDraw()) return;
+      event.preventDefault();
       clearPattern();
       drawing = true;
       seal.setPointerCapture(event.pointerId);
@@ -1420,6 +1425,7 @@
 
     seal.addEventListener("pointermove", (event) => {
       if (!drawing || duel.matchOver) return;
+      event.preventDefault();
       appendDot(nearestDot(event.clientX, event.clientY));
       renderPath();
     });
