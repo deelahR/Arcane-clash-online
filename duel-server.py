@@ -90,6 +90,7 @@ def start_round(room, now):
         "started_at": now,
         "deadline": now + ROUND_SECONDS,
         "submissions": {},
+        "attempts": {},
         "resolved": False,
     }
     room["next_round"] += 1
@@ -123,8 +124,9 @@ def resolve_round(room, now):
     if len(submissions) < 2 and now < round_data["deadline"]:
         return
 
-    p1 = submissions.get("p1", {"status": "timeout", "spell": ""})
-    p2 = submissions.get("p2", {"status": "timeout", "spell": ""})
+    attempts = round_data.get("attempts", {})
+    p1 = submissions.get("p1", {"status": "miscast" if attempts.get("p1") else "timeout", "spell": ""})
+    p2 = submissions.get("p2", {"status": "miscast" if attempts.get("p2") else "timeout", "spell": ""})
     loser, penalty, message = round_result(p1, p2)
     if loser and penalty:
         room["players"][loser]["life"] = max(0, room["players"][loser]["life"] - penalty)
@@ -221,10 +223,13 @@ class DuelHandler(SimpleHTTPRequestHandler):
             round_data = room.get("round")
             if not room["winner"] and round_data and not round_data.get("resolved") and now <= round_data["deadline"]:
                 status = str(body.get("status", "miscast"))
-                if status not in {"valid", "miscast"}:
+                if status not in {"valid", "miscast", "attempted"}:
                     status = "miscast"
-                spell = str(body.get("spell", "")) if status == "valid" else ""
-                round_data["submissions"].setdefault(player, {"status": status, "spell": spell})
+                if status == "attempted":
+                    round_data.setdefault("attempts", {})[player] = True
+                else:
+                    spell = str(body.get("spell", "")) if status == "valid" else ""
+                    round_data["submissions"].setdefault(player, {"status": status, "spell": spell})
                 resolve_round(room, now)
             self.send_json(self.state_payload(room, player))
             return

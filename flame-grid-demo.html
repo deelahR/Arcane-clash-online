@@ -526,6 +526,11 @@
         <button class="btn" id="leaveBtn">Lobby</button>
       </div>
 
+      <div class="result">
+        <div class="pattern" id="patternText">Pattern: none</div>
+        <div class="cast" id="resultText">Ready.</div>
+      </div>
+
       <div class="hud">
         <div class="fighter">
           <b><span>You</span><span id="youHpText">10</span></b>
@@ -554,11 +559,6 @@
           <g id="pathLayer"></g>
         </svg>
       </section>
-
-      <div class="result">
-        <div class="pattern" id="patternText">Pattern: none</div>
-        <div class="cast" id="resultText">Ready.</div>
-      </div>
 
       <div class="spell-cycle" aria-label="Spell strength cycle">
         <div class="cycle-arrow"></div>
@@ -673,6 +673,8 @@
     let latestState = null;
     let currentRoundId = 0;
     let submittedRoundId = 0;
+    let attemptedRoundId = 0;
+    let hadMiscastThisRound = false;
     let duel = {
       room: "",
       player: "",
@@ -763,6 +765,8 @@
       latestState = null;
       currentRoundId = 0;
       submittedRoundId = 0;
+      attemptedRoundId = 0;
+      hadMiscastThisRound = false;
       duelLog.textContent = message || "Ready.";
       clearPattern();
       refreshRooms();
@@ -885,6 +889,8 @@
       if (state.round && state.round.id !== currentRoundId) {
         currentRoundId = state.round.id;
         submittedRoundId = 0;
+        attemptedRoundId = 0;
+        hadMiscastThisRound = false;
         clearPattern();
         resultText.textContent = `Round ${state.round.id}.`;
       }
@@ -935,6 +941,20 @@
         updateState(state);
       } catch (error) {
         matchLog.textContent = "Submission stayed local. Online server not running.";
+      }
+    }
+
+    async function markAttemptedMiscast() {
+      if (!latestState || !latestState.round || attemptedRoundId === latestState.round.id) return;
+      attemptedRoundId = latestState.round.id;
+      try {
+        await api("/api/submit", {
+          room: duel.room,
+          player: duel.player,
+          status: "attempted",
+        });
+      } catch (error) {
+        matchLog.textContent = "Attempt stayed local. Online server not running.";
       }
     }
 
@@ -996,7 +1016,7 @@
       patternText.textContent = `Pattern: ${sequence.length ? sequence.join("-") : "none"}`;
     }
 
-    function clearPattern() {
+    function clearPattern(resetMessage = true) {
       sequence = [];
       drawing = false;
       livePoint = null;
@@ -1005,7 +1025,9 @@
       pathLayer.innerHTML = "";
       seal.querySelectorAll(".dot").forEach((dot) => dot.classList.remove("hit"));
       patternText.textContent = "Pattern: none";
-      resultText.textContent = duel.matchOver ? resultText.textContent : "Ready.";
+      if (resetMessage) {
+        resultText.textContent = duel.matchOver ? resultText.textContent : "Ready.";
+      }
     }
 
     function finishPattern() {
@@ -1026,9 +1048,13 @@
         renderPath("success");
         submitRound("valid", match.spell.name);
       } else if (sequence.length > 1) {
-        resultText.textContent = "Miscast.";
+        hadMiscastThisRound = true;
+        resultText.textContent = "Miscast. Try again.";
         renderPath("fail");
-        submitRound("miscast");
+        markAttemptedMiscast();
+        setTimeout(() => {
+          if (!drawing && canDraw() && hadMiscastThisRound) clearPattern(false);
+        }, 420);
       } else {
         clearPattern();
       }
