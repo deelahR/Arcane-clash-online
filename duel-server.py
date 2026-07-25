@@ -9,6 +9,7 @@ import urllib.parse
 ROOT = Path(__file__).resolve().parent
 STARTING_LIFE = 10
 ROUND_SECONDS = 5
+CONNECTION_TIMEOUT = 90
 rooms = {}
 
 BEATS = {
@@ -50,7 +51,7 @@ def clean_name(value, fallback):
 
 
 def connected_count(room, now):
-    return sum(1 for data in room["players"].values() if now - data["last_seen"] <= 20)
+    return sum(1 for data in room["players"].values() if now - data["last_seen"] <= CONNECTION_TIMEOUT)
 
 
 def server_connected_count(now):
@@ -263,7 +264,7 @@ class DuelHandler(SimpleHTTPRequestHandler):
         rival = "p2" if player == "p1" else "p1"
         now = time.time()
         for data in room["players"].values():
-            if now - data["last_seen"] > 20:
+            if now - data["last_seen"] > CONNECTION_TIMEOUT:
                 data["connected"] = False
         resolve_round(room, now)
         start_round(room, now)
@@ -283,6 +284,7 @@ class DuelHandler(SimpleHTTPRequestHandler):
             "you": room["players"][player],
             "rival": room["players"][rival],
             "round": payload_round,
+            "nextRoundAt": room.get("next_round_at", 0),
             "roomUsers": room_users,
             "serverUsers": server_connected_count(now),
             "events": room["events"],
