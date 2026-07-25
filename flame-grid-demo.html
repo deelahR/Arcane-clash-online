@@ -127,6 +127,31 @@
       margin-top: 10px;
     }
 
+    .rooms {
+      display: grid;
+      gap: 7px;
+      margin-top: 10px;
+    }
+
+    .room-card {
+      border: 1px solid var(--line);
+      background: #12100d;
+      color: var(--text);
+      border-radius: 8px;
+      padding: 10px 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      cursor: pointer;
+      text-align: left;
+    }
+
+    .room-card span {
+      color: var(--muted);
+      font-size: 0.84rem;
+    }
+
     .hud {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -338,6 +363,83 @@
       margin-top: 10px;
     }
 
+    .spell-cycle {
+      position: relative;
+      width: min(92vw, 460px);
+      aspect-ratio: 1;
+      margin: 12px auto 0;
+      border: 1px solid var(--line);
+      border-radius: 50%;
+      background:
+        radial-gradient(circle at center, rgba(255, 209, 102, 0.14), transparent 30%),
+        #12100d;
+    }
+
+    .cycle-core {
+      position: absolute;
+      inset: 37%;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      border: 1px solid #725f45;
+      color: #ffd166;
+      font-size: 0.82rem;
+      font-weight: 900;
+      text-align: center;
+      padding: 8px;
+    }
+
+    .cycle-arrow {
+      position: absolute;
+      inset: 7%;
+      border-radius: 50%;
+      border: 2px dashed rgba(255, 209, 102, 0.42);
+    }
+
+    .cycle-node {
+      position: absolute;
+      width: 25%;
+      min-width: 86px;
+      transform: translate(-50%, -50%);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #17130f;
+      overflow: hidden;
+      box-shadow: 0 10px 24px rgba(0, 0, 0, 0.34);
+    }
+
+    .cycle-node img {
+      display: block;
+      width: 100%;
+      aspect-ratio: 1.18;
+      object-fit: cover;
+    }
+
+    .cycle-node b,
+    .cycle-node span {
+      display: block;
+      padding: 0 6px;
+    }
+
+    .cycle-node b {
+      padding-top: 4px;
+      font-size: 0.74rem;
+    }
+
+    .cycle-node span {
+      color: var(--muted);
+      font-size: 0.65rem;
+      padding-bottom: 5px;
+      white-space: nowrap;
+    }
+
+    .cycle-flame { left: 50%; top: 6%; }
+    .cycle-frost { left: 86%; top: 28%; }
+    .cycle-storm { left: 86%; top: 72%; }
+    .cycle-lightning { left: 50%; top: 94%; }
+    .cycle-earth { left: 14%; top: 72%; }
+    .cycle-water { left: 14%; top: 28%; }
+
     .spell {
       border: 1px solid var(--line);
       border-radius: 8px;
@@ -388,6 +490,11 @@
       }
       .draw-line { stroke-width: 11; }
       .spell-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .cycle-node {
+        width: 30%;
+        min-width: 72px;
+      }
+      .cycle-node span { display: none; }
     }
   </style>
 </head>
@@ -402,11 +509,12 @@
       </div>
       <div class="row">
         <input id="roomInput" maxlength="8" value="ARCANE" aria-label="Room code" />
-        <button class="btn primary" id="hostBtn">Player 1</button>
-        <button class="btn" id="joinBtn">Player 2</button>
+        <button class="btn primary" id="hostBtn">Create Room</button>
+        <button class="btn" id="joinBtn">Join Code</button>
       </div>
       <div class="note" id="lobbyCount">Players: 0/2 in room - Online: 0</div>
       <div class="note" id="duelLog">Ready.</div>
+      <div class="rooms" id="roomList" aria-label="Open rooms"></div>
     </section>
 
     <section id="game" class="game">
@@ -452,6 +560,17 @@
         <div class="cast" id="resultText">Ready.</div>
       </div>
 
+      <div class="spell-cycle" aria-label="Spell strength cycle">
+        <div class="cycle-arrow"></div>
+        <div class="cycle-core">Strength follows the circle</div>
+        <div class="cycle-node cycle-flame"><img src="assets/spells/flame.png" alt="Flame spell pattern" /><b>Flame</b><span>beats Frost</span></div>
+        <div class="cycle-node cycle-frost"><img src="assets/spells/frost.png" alt="Frost spell pattern" /><b>Frost</b><span>beats Storm</span></div>
+        <div class="cycle-node cycle-storm"><img src="assets/spells/storm.png" alt="Storm spell pattern" /><b>Storm</b><span>beats Lightning</span></div>
+        <div class="cycle-node cycle-lightning"><img src="assets/spells/lightning.png" alt="Lightning spell pattern" /><b>Lightning</b><span>beats Earth</span></div>
+        <div class="cycle-node cycle-earth"><img src="assets/spells/earth.png" alt="Earth spell pattern" /><b>Earth</b><span>beats Water</span></div>
+        <div class="cycle-node cycle-water"><img src="assets/spells/water.png" alt="Water spell pattern" /><b>Water</b><span>beats Flame</span></div>
+      </div>
+
       <div class="spell-list" aria-label="Known spells">
         <div class="spell"><img src="assets/spells/flame.png" alt="Flame spell pattern" /><b>Flame</b><span>7-2-9-5-7</span></div>
         <div class="spell"><img src="assets/spells/frost.png" alt="Frost spell pattern" /><b>Frost</b><span>2-4-8-6-2</span></div>
@@ -475,6 +594,7 @@
     const joinBtn = document.getElementById("joinBtn");
     const leaveBtn = document.getElementById("leaveBtn");
     const clearBtn = document.getElementById("clearBtn");
+    const roomList = document.getElementById("roomList");
     const lobbyCount = document.getElementById("lobbyCount");
     const duelLog = document.getElementById("duelLog");
     const matchLog = document.getElementById("matchLog");
@@ -645,6 +765,7 @@
       submittedRoundId = 0;
       duelLog.textContent = message || "Ready.";
       clearPattern();
+      refreshRooms();
     }
 
     function showGame() {
@@ -654,6 +775,41 @@
 
     function roomCode() {
       return (roomInput.value || "ARCANE").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 8) || "ARCANE";
+    }
+
+    function randomRoomCode() {
+      return "ROOM" + Math.floor(1000 + Math.random() * 9000);
+    }
+
+    function renderRooms(data) {
+      if (!roomList) return;
+      lobbyCount.textContent = `Open rooms: ${(data.rooms || []).filter((room) => room.open).length} - Online: ${data.serverUsers || 0}`;
+      if (!data.rooms || !data.rooms.length) {
+        roomList.innerHTML = `<div class="note">No rooms yet. Create one.</div>`;
+        return;
+      }
+      roomList.innerHTML = "";
+      data.rooms.forEach((room) => {
+        const item = document.createElement("button");
+        item.className = "room-card";
+        item.type = "button";
+        item.disabled = !room.open;
+        item.innerHTML = `<b>${room.code}</b><span>${room.users}/2 ${room.open ? "open" : "busy"}</span>`;
+        item.addEventListener("click", () => {
+          roomInput.value = room.code;
+          connectDuel("join");
+        });
+        roomList.appendChild(item);
+      });
+    }
+
+    async function refreshRooms() {
+      if (!lobby.classList.contains("scene-on")) return;
+      try {
+        renderRooms(await api("/api/rooms"));
+      } catch (error) {
+        lobbyCount.textContent = "Online server not running. Try again after the host wakes up.";
+      }
     }
 
     function setLife(elText, elBar, value) {
@@ -900,6 +1056,11 @@
     joinBtn.addEventListener("click", () => connectDuel("join"));
     leaveBtn.addEventListener("click", () => showLobby("Choose a room for the next duel."));
     setInterval(updateTimerText, 100);
+    setInterval(refreshRooms, 1800);
+    hostBtn.addEventListener("click", () => {
+      roomInput.value = randomRoomCode();
+    }, { capture: true });
+    refreshRooms();
 
     makeDots();
     clearPattern();

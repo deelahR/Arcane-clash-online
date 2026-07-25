@@ -52,6 +52,23 @@ def server_connected_count(now):
     return sum(connected_count(room, now) for room in rooms.values())
 
 
+def room_summaries(now):
+    summaries = []
+    for room in rooms.values():
+        users = connected_count(room, now)
+        if users <= 0 and not room["events"]:
+            continue
+        summaries.append({
+            "code": room["code"],
+            "users": users,
+            "open": users < 2 and not room["winner"],
+            "winner": room["winner"],
+            "round": room["round"]["id"] if room.get("round") else 0,
+        })
+    summaries.sort(key=lambda item: (not item["open"], item["code"]))
+    return summaries[:12]
+
+
 def public_submission(submission):
     if not submission:
         return {"status": "waiting", "spell": ""}
@@ -163,6 +180,13 @@ class DuelHandler(SimpleHTTPRequestHandler):
                 room["players"][player]["connected"] = True
                 room["players"][player]["last_seen"] = time.time()
             self.send_json(self.state_payload(room, player))
+            return
+        if parsed.path == "/api/rooms":
+            now = time.time()
+            self.send_json({
+                "rooms": room_summaries(now),
+                "serverUsers": server_connected_count(now),
+            })
             return
         super().do_GET()
 
