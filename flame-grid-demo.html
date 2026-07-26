@@ -34,7 +34,7 @@
       padding: 14px;
     }
 
-    button, input {
+    button, input, select {
       font: inherit;
     }
 
@@ -104,7 +104,7 @@
       margin-top: 12px;
     }
 
-    input {
+    input, select {
       flex: 1 1 150px;
       min-width: 0;
       background: #12100d;
@@ -113,6 +113,9 @@
       border-radius: 8px;
       min-height: 42px;
       padding: 0 12px;
+    }
+
+    input {
       text-transform: uppercase;
     }
 
@@ -649,6 +652,16 @@
       pointer-events: none;
     }
 
+    .practice-on .hud,
+    .practice-on .timer,
+    .practice-on .battle-reveal {
+      display: none;
+    }
+
+    .practice-on .round-panel {
+      grid-template-columns: 1fr;
+    }
+
     @media (max-width: 560px) {
       body { padding: 8px; }
       .app { padding: 10px; }
@@ -696,6 +709,17 @@
         <input id="roomInput" maxlength="8" value="ARCANE" aria-label="Room code" />
         <button class="btn primary" id="hostBtn">Create Room</button>
         <button class="btn" id="joinBtn">Join Code</button>
+      </div>
+      <div class="row">
+        <select id="practiceSpellSelect" aria-label="Practice spell">
+          <option value="Flame">Flame practice</option>
+          <option value="Frost">Frost practice</option>
+          <option value="Storm">Storm practice</option>
+          <option value="Water">Water practice</option>
+          <option value="Lightning">Lightning practice</option>
+          <option value="Earth">Earth practice</option>
+        </select>
+        <button class="btn" id="practiceBtn">Practice Drawing</button>
       </div>
       <div class="note" id="lobbyCount">Players: 0/2 in room - Online: 0</div>
       <div class="note" id="duelLog">Ready.</div>
@@ -799,8 +823,10 @@
     const game = document.getElementById("game");
     const roomInput = document.getElementById("roomInput");
     const playerNameInput = document.getElementById("playerNameInput");
+    const practiceSpellSelect = document.getElementById("practiceSpellSelect");
     const hostBtn = document.getElementById("hostBtn");
     const joinBtn = document.getElementById("joinBtn");
+    const practiceBtn = document.getElementById("practiceBtn");
     const leaveBtn = document.getElementById("leaveBtn");
     const deleteRoomBtn = document.getElementById("deleteRoomBtn");
     const clearBtn = document.getElementById("clearBtn");
@@ -902,6 +928,8 @@
     let lastResult = null;
     let latestState = null;
     let latestStateReceivedAt = 0;
+    let practiceMode = false;
+    let practiceSpell = "Flame";
     let currentRoundId = 0;
     let submittedRoundId = 0;
     let attemptedRoundId = 0;
@@ -987,8 +1015,10 @@
       lobby.classList.add("scene-on");
       game.classList.remove("scene-on");
       game.classList.remove("match-over");
+      game.classList.remove("practice-on");
       if (duel.poll) clearInterval(duel.poll);
       duel.poll = null;
+      practiceMode = false;
       duel.room = "";
       duel.player = "";
       duel.lastEvent = 0;
@@ -1008,6 +1038,34 @@
     function showGame() {
       lobby.classList.remove("scene-on");
       game.classList.add("scene-on");
+    }
+
+    function startPractice() {
+      if (duel.poll) clearInterval(duel.poll);
+      duel.poll = null;
+      practiceMode = true;
+      practiceSpell = practiceSpellSelect.value || "Flame";
+      duel.room = "";
+      duel.player = "practice";
+      duel.lastEvent = 0;
+      duel.matchOver = false;
+      latestState = null;
+      latestStateReceivedAt = 0;
+      currentRoundId = 0;
+      submittedRoundId = 0;
+      attemptedRoundId = 0;
+      hadMiscastThisRound = false;
+      game.classList.remove("match-over");
+      game.classList.add("practice-on");
+      roomBadge.textContent = "Practice";
+      roleBadge.textContent = `${practiceSpell} drawing`;
+      matchLog.textContent = `Practice ${practiceSpell}. Draw the approved pattern.`;
+      patternText.textContent = "Pattern: none";
+      resultText.textContent = "Draw when ready.";
+      deleteRoomBtn.style.display = "none";
+      showDrawPhase();
+      clearPattern(false);
+      showGame();
     }
 
     function roomCode() {
@@ -1111,6 +1169,7 @@
     }
 
     function canDraw() {
+      if (practiceMode) return true;
       return Boolean(
         duel.room &&
         !duel.matchOver &&
@@ -1258,6 +1317,8 @@
         duel.matchOver = false;
         roomBadge.textContent = duel.room;
         roleBadge.textContent = `${joined.you.name || playerName()} · ${duel.player === "p1" ? "Player 1" : "Player 2"}`;
+        practiceMode = false;
+        game.classList.remove("practice-on");
         deleteRoomBtn.style.display = duel.player === "p1" ? "" : "none";
         if (role === "host" && duel.player === "p1") saveCreatedRoom(joined.room);
         showGame();
@@ -1379,7 +1440,7 @@
       seal.querySelectorAll(".dot").forEach((dot) => dot.classList.remove("hit"));
       patternText.textContent = "Pattern: none";
       if (resetMessage) {
-        resultText.textContent = duel.matchOver ? resultText.textContent : "Ready.";
+        resultText.textContent = practiceMode ? "Draw when ready." : duel.matchOver ? resultText.textContent : "Ready.";
       }
     }
 
@@ -1388,6 +1449,32 @@
       drawing = false;
       livePoint = null;
       lastHit = null;
+      if (practiceMode) {
+        const match = scorePattern(sequence);
+        if (match && match.spell.name === practiceSpell) {
+          lastResult = match;
+          lastColor = match.spell.color;
+          resultText.textContent = `${practiceSpell} success.`;
+          matchLog.textContent = `Correct ${practiceSpell}. Draw again to practice more.`;
+          renderPath("success");
+        } else if (match) {
+          lastResult = match;
+          lastColor = match.spell.color;
+          resultText.textContent = `${match.spell.name} drawn, target is ${practiceSpell}.`;
+          matchLog.textContent = `Good shape, wrong spell. Target: ${practiceSpell}.`;
+          renderPath("fail");
+        } else if (sequence.length > 1) {
+          resultText.textContent = "Miscast. Try again.";
+          matchLog.textContent = `Practice ${practiceSpell}. Try the pattern again.`;
+          renderPath("fail");
+          setTimeout(() => {
+            if (!drawing && practiceMode) clearPattern(false);
+          }, 520);
+        } else {
+          clearPattern();
+        }
+        return;
+      }
       if (!canDraw()) {
         resultText.textContent = "Too late.";
         renderPath("fail");
@@ -1435,6 +1522,7 @@
     clearBtn.addEventListener("click", clearPattern);
     hostBtn.addEventListener("click", () => connectDuel("host"));
     joinBtn.addEventListener("click", () => connectDuel("join"));
+    practiceBtn.addEventListener("click", startPractice);
     leaveBtn.addEventListener("click", () => showLobby("Choose a room for the next duel."));
     deleteRoomBtn.addEventListener("click", () => deleteCreatedRoom(duel.room));
     setInterval(updateTimerText, 100);
