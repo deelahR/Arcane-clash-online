@@ -150,6 +150,10 @@
       width: 100%;
     }
 
+    .choice-card select {
+      width: 100%;
+    }
+
     .guide-toggle {
       width: 100%;
       display: flex;
@@ -493,6 +497,56 @@
       animation: revealIn 420ms cubic-bezier(0.2, 0.85, 0.2, 1.12) both;
     }
 
+    .pve-choice-panel {
+      display: none;
+      width: min(92vw, 520px);
+      margin: 8px auto 0;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #12100d;
+      padding: 10px;
+    }
+
+    .pve-choice-panel.phase-on {
+      display: block;
+    }
+
+    .pve-spell-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .pve-spell-btn {
+      border: 1px solid #5b4b39;
+      border-radius: 8px;
+      background: #17130f;
+      color: var(--text);
+      padding: 7px;
+      cursor: pointer;
+      display: grid;
+      gap: 5px;
+      place-items: center;
+      text-align: center;
+    }
+
+    .pve-spell-btn img {
+      width: min(18vw, 62px);
+      aspect-ratio: 1;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 1px solid #806c50;
+    }
+
+    .pve-spell-btn b {
+      font-size: 0.78rem;
+    }
+
+    .pve-spell-btn:disabled {
+      opacity: 0.48;
+      cursor: default;
+    }
+
     .versus {
       display: grid;
       grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
@@ -720,7 +774,12 @@
 
     .practice-on .hud,
     .practice-on .timer,
-    .practice-on .battle-reveal {
+    .practice-on .battle-reveal,
+    .practice-on .pve-choice-panel {
+      display: none;
+    }
+
+    .pve-card-on .seal {
       display: none;
     }
 
@@ -745,6 +804,7 @@
       .versus { gap: 6px; }
       .combatant img,
       .spell-placeholder { width: min(35vw, 122px); }
+      .pve-spell-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .dot {
         width: 46px;
         height: 46px;
@@ -798,6 +858,18 @@
             </div>
           </section>
         </div>
+
+        <section class="lobby-section">
+          <h2>Fight AI</h2>
+          <div class="row">
+            <select id="pveLevelSelect" aria-label="PvE level">
+              <option value="1">Level 1 - choose spell cards</option>
+              <option value="2">Level 2 - draw vs random AI</option>
+              <option value="3">Level 3 - draw vs smarter AI</option>
+            </select>
+            <button class="btn primary" id="pveBtn">Start PvE</button>
+          </div>
+        </section>
 
         <section class="lobby-section">
           <h2>Open Rooms</h2>
@@ -897,6 +969,10 @@
         </div>
       </section>
 
+      <section class="pve-choice-panel" id="pveChoicePanel" aria-label="Choose PvE spell">
+        <div class="pve-spell-grid" id="pveSpellGrid"></div>
+      </section>
+
       <div class="row">
         <button class="btn" id="clearBtn">Clear</button>
       </div>
@@ -909,9 +985,11 @@
     const roomInput = document.getElementById("roomInput");
     const playerNameInput = document.getElementById("playerNameInput");
     const practiceSpellSelect = document.getElementById("practiceSpellSelect");
+    const pveLevelSelect = document.getElementById("pveLevelSelect");
     const hostBtn = document.getElementById("hostBtn");
     const joinBtn = document.getElementById("joinBtn");
     const practiceBtn = document.getElementById("practiceBtn");
+    const pveBtn = document.getElementById("pveBtn");
     const leaveBtn = document.getElementById("leaveBtn");
     const deleteRoomBtn = document.getElementById("deleteRoomBtn");
     const clearBtn = document.getElementById("clearBtn");
@@ -932,6 +1010,8 @@
     const rivalHpBar = document.getElementById("rivalHpBar");
     const seal = document.getElementById("seal");
     const battleReveal = document.getElementById("battleReveal");
+    const pveChoicePanel = document.getElementById("pveChoicePanel");
+    const pveSpellGrid = document.getElementById("pveSpellGrid");
     const youReveal = document.getElementById("youReveal");
     const rivalReveal = document.getElementById("rivalReveal");
     const youRevealImg = document.getElementById("youRevealImg");
@@ -1004,6 +1084,14 @@
       Lightning: "assets/elements/lightning.jpeg",
       Earth: "assets/elements/earth.jpeg",
     };
+    const BEATS = {
+      Flame: new Set(["Frost"]),
+      Frost: new Set(["Storm"]),
+      Storm: new Set(["Lightning"]),
+      Lightning: new Set(["Earth"]),
+      Earth: new Set(["Water"]),
+      Water: new Set(["Flame"]),
+    };
     const failedSpellImage = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'%3E%3Crect width='120' height='120' fill='%23100f0d'/%3E%3Ccircle cx='60' cy='60' r='42' fill='none' stroke='%23ff3b4f' stroke-width='5' stroke-dasharray='10 8'/%3E%3Cpath d='M38 38l44 44M82 38L38 82' stroke='%23ffd166' stroke-width='8' stroke-linecap='round'/%3E%3C/svg%3E";
     let sequence = [];
     let drawing = false;
@@ -1015,6 +1103,16 @@
     let latestStateReceivedAt = 0;
     let practiceMode = false;
     let practiceSpell = "Flame";
+    let pveMode = false;
+    let pveLevel = 1;
+    let pveRound = 0;
+    let pveTimer = null;
+    let pveNextTimer = null;
+    let pvePlayerLife = STARTING_LIFE;
+    let pveAiLife = STARTING_LIFE;
+    let pveSubmitted = false;
+    let pveHistory = [];
+    let pveDeadline = 0;
     let currentRoundId = 0;
     let submittedRoundId = 0;
     let attemptedRoundId = 0;
@@ -1096,14 +1194,24 @@
       });
     }
 
+    function stopLocalTimers() {
+      if (pveTimer) clearInterval(pveTimer);
+      if (pveNextTimer) clearTimeout(pveNextTimer);
+      pveTimer = null;
+      pveNextTimer = null;
+    }
+
     function showLobby(message) {
       lobby.classList.add("scene-on");
       game.classList.remove("scene-on");
       game.classList.remove("match-over");
       game.classList.remove("practice-on");
+      game.classList.remove("pve-card-on");
       if (duel.poll) clearInterval(duel.poll);
+      stopLocalTimers();
       duel.poll = null;
       practiceMode = false;
+      pveMode = false;
       duel.room = "";
       duel.player = "";
       duel.lastEvent = 0;
@@ -1127,8 +1235,10 @@
 
     function startPractice() {
       if (duel.poll) clearInterval(duel.poll);
+      stopLocalTimers();
       duel.poll = null;
       practiceMode = true;
+      pveMode = false;
       practiceSpell = practiceSpellSelect.value || "Flame";
       duel.room = "";
       duel.player = "practice";
@@ -1141,6 +1251,7 @@
       attemptedRoundId = 0;
       hadMiscastThisRound = false;
       game.classList.remove("match-over");
+      game.classList.remove("pve-card-on");
       game.classList.add("practice-on");
       roomBadge.textContent = "Practice";
       roleBadge.textContent = `${practiceSpell} drawing`;
@@ -1151,6 +1262,177 @@
       showDrawPhase();
       clearPattern(false);
       showGame();
+    }
+
+    function pveLevelName() {
+      if (pveLevel === 1) return "Level 1";
+      if (pveLevel === 2) return "Level 2";
+      return "Level 3";
+    }
+
+    function randomSpellName() {
+      return spells[Math.floor(Math.random() * spells.length)].name;
+    }
+
+    function counterFor(spellName) {
+      const counter = Object.entries(BEATS).find(([, beaten]) => beaten.has(spellName));
+      return counter ? counter[0] : randomSpellName();
+    }
+
+    function chooseAiSpell() {
+      if (pveLevel < 3 || !pveHistory.length) return randomSpellName();
+      const counts = {};
+      pveHistory.forEach((name) => {
+        counts[name] = (counts[name] || 0) + 1;
+      });
+      const favorite = Object.entries(counts).sort((a, b) => b[1] - a[1])[0][0];
+      return Math.random() < 0.62 ? counterFor(favorite) : randomSpellName();
+    }
+
+    function localRoundResult(playerSubmission, aiSubmission) {
+      const s1 = playerSubmission.status;
+      const s2 = aiSubmission.status;
+      if (s1 !== "valid" && s2 !== "valid") return { loser: "", penalty: 0, message: "Both failed. Draw." };
+      if (s1 === "valid" && s2 !== "valid") return { loser: "ai", penalty: s2 === "timeout" ? 2 : 1, message: `${playerSubmission.spell} wins. AI loses ${s2 === "timeout" ? 2 : 1} life.` };
+      if (s2 === "valid" && s1 !== "valid") return { loser: "player", penalty: s1 === "timeout" ? 2 : 1, message: `${aiSubmission.spell} wins. Player 1 loses ${s1 === "timeout" ? 2 : 1} life.` };
+      if (playerSubmission.spell === aiSubmission.spell) return { loser: "", penalty: 0, message: `Both cast ${playerSubmission.spell}. Draw.` };
+      if (BEATS[playerSubmission.spell] && BEATS[playerSubmission.spell].has(aiSubmission.spell)) return { loser: "ai", penalty: 1, message: `${playerSubmission.spell} beats ${aiSubmission.spell}. AI loses 1 life.` };
+      if (BEATS[aiSubmission.spell] && BEATS[aiSubmission.spell].has(playerSubmission.spell)) return { loser: "player", penalty: 1, message: `${aiSubmission.spell} beats ${playerSubmission.spell}. Player 1 loses 1 life.` };
+      return { loser: "", penalty: 0, message: `${playerSubmission.spell} and ${aiSubmission.spell} cancel. Draw.` };
+    }
+
+    function buildPveSpellButtons() {
+      pveSpellGrid.innerHTML = "";
+      spells.forEach((spell) => {
+        const button = document.createElement("button");
+        button.className = "pve-spell-btn";
+        button.type = "button";
+        button.innerHTML = `<img src="${elementImages[spell.name]}" alt="${spell.name}" /><b>${spell.name}</b>`;
+        button.addEventListener("click", () => submitPveSpell(spell.name));
+        pveSpellGrid.appendChild(button);
+      });
+    }
+
+    function setPveButtonsDisabled(disabled) {
+      pveSpellGrid.querySelectorAll("button").forEach((button) => {
+        button.disabled = disabled;
+      });
+    }
+
+    function startPve() {
+      if (duel.poll) clearInterval(duel.poll);
+      stopLocalTimers();
+      duel.poll = null;
+      practiceMode = false;
+      pveMode = true;
+      pveLevel = Number(pveLevelSelect.value) || 1;
+      pveRound = 0;
+      pvePlayerLife = STARTING_LIFE;
+      pveAiLife = STARTING_LIFE;
+      pveHistory = [];
+      duel.room = "";
+      duel.player = "p1";
+      duel.lastEvent = 0;
+      duel.matchOver = false;
+      latestState = null;
+      latestStateReceivedAt = 0;
+      currentRoundId = 0;
+      submittedRoundId = 0;
+      attemptedRoundId = 0;
+      hadMiscastThisRound = false;
+      game.classList.remove("match-over", "practice-on");
+      roomBadge.textContent = "PvE";
+      roleBadge.textContent = `${pveLevelName()} vs AI`;
+      deleteRoomBtn.style.display = "none";
+      youNameText.textContent = playerName();
+      rivalNameText.textContent = "AI Mage";
+      setLife(youHpText, youHpBar, pvePlayerLife);
+      setLife(rivalHpText, rivalHpBar, pveAiLife);
+      buildPveSpellButtons();
+      showGame();
+      startPveRound();
+    }
+
+    function startPveRound() {
+      if (!pveMode || duel.matchOver) return;
+      stopLocalTimers();
+      pveRound += 1;
+      pveSubmitted = false;
+      pveDeadline = Date.now() / 1000 + 5;
+      currentRoundId = pveRound;
+      submittedRoundId = 0;
+      attemptedRoundId = 0;
+      hadMiscastThisRound = false;
+      showDrawPhase();
+      clearPattern(false);
+      resultText.textContent = pveLevel === 1 ? "Choose a spell." : `Round ${pveRound}.`;
+      matchLog.textContent = pveLevel === 1 ? "Choose one spell before time ends." : "Draw one spell before time ends.";
+      roundLabel.textContent = `Round ${pveRound}`;
+      timerText.textContent = "5.0s";
+      timerFill.style.width = "100%";
+      if (pveLevel === 1) {
+        game.classList.add("pve-card-on");
+        pveChoicePanel.classList.add("phase-on");
+        setPveButtonsDisabled(false);
+      } else {
+        game.classList.remove("pve-card-on");
+        pveChoicePanel.classList.remove("phase-on");
+      }
+      pveTimer = setInterval(updatePveTimer, 100);
+    }
+
+    function updatePveTimer() {
+      if (!pveMode || duel.matchOver) return;
+      const left = Math.max(0, pveDeadline - Date.now() / 1000);
+      timerText.textContent = `${left.toFixed(1)}s`;
+      timerFill.style.width = `${Math.max(0, Math.min(100, (left / 5) * 100))}%`;
+      if (!pveSubmitted) {
+        matchLog.textContent = `${pveLevelName()} - ${left.toFixed(1)}s. ${pveLevel === 1 ? "Choose now." : "Draw now."}`;
+      }
+      if (left <= 0 && !pveSubmitted) {
+        submitPveResult({ status: "timeout", spell: "" });
+      }
+    }
+
+    function submitPveSpell(spellName) {
+      if (!pveMode || pveSubmitted || duel.matchOver || pveLevel !== 1) return;
+      submitPveResult({ status: "valid", spell: spellName });
+    }
+
+    function submitPveResult(playerSubmission) {
+      if (!pveMode || pveSubmitted || duel.matchOver) return;
+      pveSubmitted = true;
+      if (pveTimer) clearInterval(pveTimer);
+      pveTimer = null;
+      setPveButtonsDisabled(true);
+      const aiSubmission = { status: "valid", spell: chooseAiSpell() };
+      if (playerSubmission.status === "valid") pveHistory.push(playerSubmission.spell);
+      const result = localRoundResult(playerSubmission, aiSubmission);
+      if (result.loser === "player") pvePlayerLife = Math.max(0, pvePlayerLife - result.penalty);
+      if (result.loser === "ai") pveAiLife = Math.max(0, pveAiLife - result.penalty);
+      setLife(youHpText, youHpBar, pvePlayerLife);
+      setLife(rivalHpText, rivalHpBar, pveAiLife);
+      latestState = {
+        you: { name: playerName(), life: pvePlayerLife },
+        rival: { name: "AI Mage", life: pveAiLife },
+      };
+      const event = {
+        round: pveRound,
+        message: result.message,
+        p1: playerSubmission,
+        p2: aiSubmission,
+      };
+      resultText.textContent = `Round ${pveRound}: ${result.message}`;
+      revealOutcome(event);
+      if (pvePlayerLife <= 0 || pveAiLife <= 0) {
+        duel.matchOver = true;
+        game.classList.add("match-over");
+        matchLog.textContent = pveAiLife <= 0 ? "Victory over AI." : "Defeat by AI.";
+        resultText.textContent = pveAiLife <= 0 ? "Victory." : "Defeat.";
+        return;
+      }
+      matchLog.textContent = "Next PvE round soon.";
+      pveNextTimer = setTimeout(startPveRound, 2600);
     }
 
     function roomCode() {
@@ -1255,6 +1537,7 @@
 
     function canDraw() {
       if (practiceMode) return true;
+      if (pveMode) return pveLevel > 1 && !pveSubmitted && !duel.matchOver && Date.now() / 1000 < pveDeadline;
       return Boolean(
         duel.room &&
         !duel.matchOver &&
@@ -1300,6 +1583,7 @@
     function showDrawPhase() {
       seal.classList.remove("phase-hidden");
       battleReveal.classList.remove("phase-on");
+      if (!pveMode || pveLevel > 1) pveChoicePanel.classList.remove("phase-on");
     }
 
     function showRevealPhase() {
@@ -1345,8 +1629,8 @@
     function revealOutcome(event) {
       const youSubmission = duel.player === "p1" ? event.p1 : event.p2;
       const rivalSubmission = duel.player === "p1" ? event.p2 : event.p1;
-      const youLost = event.message.includes(duel.player === "p1" ? "Player 1 loses" : "Player 2 loses");
-      const rivalLost = event.message.includes(duel.player === "p1" ? "Player 2 loses" : "Player 1 loses");
+      const youLost = event.message.includes(duel.player === "p1" ? "Player 1 loses" : "Player 2 loses") || event.message.includes("You lose");
+      const rivalLost = event.message.includes(duel.player === "p1" ? "Player 2 loses" : "Player 1 loses") || event.message.includes("AI loses");
       const youState = youLost ? "lose" : rivalLost ? "win" : "draw";
       const rivalState = rivalLost ? "lose" : youLost ? "win" : "draw";
       setRevealSide(youReveal, youRevealImg, youRevealSpell, youRevealName, latestState.you.name || "You", youSubmission, youState);
@@ -1403,7 +1687,11 @@
         roomBadge.textContent = duel.room;
         roleBadge.textContent = `${joined.you.name || playerName()} · ${duel.player === "p1" ? "Player 1" : "Player 2"}`;
         practiceMode = false;
+        pveMode = false;
+        stopLocalTimers();
         game.classList.remove("practice-on");
+        game.classList.remove("pve-card-on");
+        pveChoicePanel.classList.remove("phase-on");
         deleteRoomBtn.style.display = duel.player === "p1" ? "" : "none";
         if (role === "host" && duel.player === "p1") saveCreatedRoom(joined.room);
         showGame();
@@ -1560,6 +1848,30 @@
         }
         return;
       }
+      if (pveMode) {
+        if (!canDraw()) {
+          resultText.textContent = "Too late.";
+          renderPath("fail");
+          return;
+        }
+        const match = scorePattern(sequence);
+        if (match) {
+          lastResult = match;
+          lastColor = match.spell.color;
+          resultText.textContent = `${match.spell.name} locked.`;
+          renderPath("success");
+          submitPveResult({ status: "valid", spell: match.spell.name });
+        } else if (sequence.length > 1) {
+          resultText.textContent = "Miscast. Try again.";
+          renderPath("fail");
+          setTimeout(() => {
+            if (!drawing && canDraw() && pveMode) clearPattern(false);
+          }, 420);
+        } else {
+          clearPattern();
+        }
+        return;
+      }
       if (!canDraw()) {
         resultText.textContent = "Too late.";
         renderPath("fail");
@@ -1608,6 +1920,7 @@
     hostBtn.addEventListener("click", () => connectDuel("host"));
     joinBtn.addEventListener("click", () => connectDuel("join"));
     practiceBtn.addEventListener("click", startPractice);
+    pveBtn.addEventListener("click", startPve);
     leaveBtn.addEventListener("click", () => showLobby("Choose a room for the next duel."));
     deleteRoomBtn.addEventListener("click", () => deleteCreatedRoom(duel.room));
     setInterval(updateTimerText, 100);
