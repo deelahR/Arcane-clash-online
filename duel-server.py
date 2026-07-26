@@ -13,12 +13,12 @@ CONNECTION_TIMEOUT = 90
 rooms = {}
 
 BEATS = {
-    "Flame": {"Frost"},
-    "Frost": {"Storm"},
-    "Storm": {"Lightning"},
-    "Lightning": {"Earth"},
-    "Earth": {"Water"},
-    "Water": {"Flame"},
+    "Flame": {"Frost", "Water"},
+    "Frost": {"Water", "Lightning"},
+    "Water": {"Lightning", "Storm"},
+    "Lightning": {"Storm", "Earth"},
+    "Storm": {"Earth", "Flame"},
+    "Earth": {"Flame", "Frost"},
 }
 
 

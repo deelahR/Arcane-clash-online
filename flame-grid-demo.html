@@ -728,10 +728,10 @@
 
     .cycle-flame { left: 50%; top: 6%; }
     .cycle-frost { left: 86%; top: 28%; }
-    .cycle-storm { left: 86%; top: 72%; }
+    .cycle-water { left: 86%; top: 72%; }
     .cycle-lightning { left: 50%; top: 94%; }
-    .cycle-earth { left: 14%; top: 72%; }
-    .cycle-water { left: 14%; top: 28%; }
+    .cycle-storm { left: 14%; top: 72%; }
+    .cycle-earth { left: 14%; top: 28%; }
 
     .spell {
       border: 1px solid var(--line);
@@ -882,13 +882,13 @@
           <summary class="btn guide-toggle">Spell Guide <span>Open</span></summary>
           <div class="spell-cycle" aria-label="Spell strength cycle">
             <div class="cycle-arrow"></div>
-            <div class="cycle-core">Strength follows the circle</div>
-            <div class="cycle-node cycle-flame"><img src="assets/spells/flame.png" alt="Flame spell pattern" /><b>Flame</b><span>beats Frost</span></div>
-            <div class="cycle-node cycle-frost"><img src="assets/spells/frost.png" alt="Frost spell pattern" /><b>Frost</b><span>beats Storm</span></div>
-            <div class="cycle-node cycle-storm"><img src="assets/spells/storm.png" alt="Storm spell pattern" /><b>Storm</b><span>beats Lightning</span></div>
-            <div class="cycle-node cycle-lightning"><img src="assets/spells/lightning.png" alt="Lightning spell pattern" /><b>Lightning</b><span>beats Earth</span></div>
-            <div class="cycle-node cycle-earth"><img src="assets/spells/earth.png" alt="Earth spell pattern" /><b>Earth</b><span>beats Water</span></div>
-            <div class="cycle-node cycle-water"><img src="assets/spells/water.png" alt="Water spell pattern" /><b>Water</b><span>beats Flame</span></div>
+            <div class="cycle-core">Beats next 2</div>
+            <div class="cycle-node cycle-flame"><img src="assets/spells/flame.png" alt="Flame spell pattern" /><b>Flame</b><span>beats Frost, Water</span></div>
+            <div class="cycle-node cycle-frost"><img src="assets/spells/frost.png" alt="Frost spell pattern" /><b>Frost</b><span>beats Water, Lightning</span></div>
+            <div class="cycle-node cycle-storm"><img src="assets/spells/storm.png" alt="Storm spell pattern" /><b>Storm</b><span>beats Earth, Flame</span></div>
+            <div class="cycle-node cycle-lightning"><img src="assets/spells/lightning.png" alt="Lightning spell pattern" /><b>Lightning</b><span>beats Storm, Earth</span></div>
+            <div class="cycle-node cycle-earth"><img src="assets/spells/earth.png" alt="Earth spell pattern" /><b>Earth</b><span>beats Flame, Frost</span></div>
+            <div class="cycle-node cycle-water"><img src="assets/spells/water.png" alt="Water spell pattern" /><b>Water</b><span>beats Lightning, Storm</span></div>
           </div>
 
           <div class="spell-list" aria-label="Known spells">
@@ -1085,12 +1085,12 @@
       Earth: "assets/elements/earth.jpeg",
     };
     const BEATS = {
-      Flame: new Set(["Frost"]),
-      Frost: new Set(["Storm"]),
-      Storm: new Set(["Lightning"]),
-      Lightning: new Set(["Earth"]),
-      Earth: new Set(["Water"]),
-      Water: new Set(["Flame"]),
+      Flame: new Set(["Frost", "Water"]),
+      Frost: new Set(["Water", "Lightning"]),
+      Water: new Set(["Lightning", "Storm"]),
+      Lightning: new Set(["Storm", "Earth"]),
+      Storm: new Set(["Earth", "Flame"]),
+      Earth: new Set(["Flame", "Frost"]),
     };
     const failedSpellImage = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'%3E%3Crect width='120' height='120' fill='%23100f0d'/%3E%3Ccircle cx='60' cy='60' r='42' fill='none' stroke='%23ff3b4f' stroke-width='5' stroke-dasharray='10 8'/%3E%3Cpath d='M38 38l44 44M82 38L38 82' stroke='%23ffd166' stroke-width='8' stroke-linecap='round'/%3E%3C/svg%3E";
     let sequence = [];
