@@ -855,14 +855,7 @@
         <div class="big-actions">
           <section class="choice-card">
             <b>Practice</b>
-            <select id="practiceSpellSelect" aria-label="Practice spell">
-              <option value="Flame">Flame</option>
-              <option value="Frost">Frost</option>
-              <option value="Storm">Storm</option>
-              <option value="Water">Water</option>
-              <option value="Lightning">Lightning</option>
-              <option value="Earth">Earth</option>
-            </select>
+            <select id="practiceSpellSelect" aria-label="Practice spell"></select>
             <button class="btn primary" id="practiceBtn">Practice Drawing</button>
           </section>
 
@@ -913,22 +906,9 @@
               <path d="M24 22 Q37 11 50 12" marker-end="url(#cycleArrowHead)"></path>
             </svg>
             <div class="cycle-core">Beats next 2</div>
-            <div class="cycle-node cycle-flame"><img src="assets/spells/flame.png" alt="Flame spell pattern" /><b>Flame</b><span>beats Frost, Water</span></div>
-            <div class="cycle-node cycle-frost"><img src="assets/spells/frost.png" alt="Frost spell pattern" /><b>Frost</b><span>beats Water, Lightning</span></div>
-            <div class="cycle-node cycle-storm"><img src="assets/spells/storm.png" alt="Storm spell pattern" /><b>Storm</b><span>beats Earth, Flame</span></div>
-            <div class="cycle-node cycle-lightning"><img src="assets/spells/lightning.png" alt="Lightning spell pattern" /><b>Lightning</b><span>beats Storm, Earth</span></div>
-            <div class="cycle-node cycle-earth"><img src="assets/spells/earth.png" alt="Earth spell pattern" /><b>Earth</b><span>beats Flame, Frost</span></div>
-            <div class="cycle-node cycle-water"><img src="assets/spells/water.png" alt="Water spell pattern" /><b>Water</b><span>beats Lightning, Storm</span></div>
           </div>
 
-          <div class="spell-list" aria-label="Known spells">
-            <div class="spell"><img src="assets/spells/flame.png" alt="Flame spell pattern" /><b>Flame</b><span>7-2-9-5-7</span></div>
-            <div class="spell"><img src="assets/spells/frost.png" alt="Frost spell pattern" /><b>Frost</b><span>2-4-8-6-2</span></div>
-            <div class="spell"><img src="assets/spells/storm.png" alt="Storm spell pattern" /><b>Storm</b><span>9-8-7-4-1-2-3-6-5</span></div>
-            <div class="spell"><img src="assets/spells/water.png" alt="Water spell pattern" /><b>Water</b><span>7-4-5-6-9-5-7</span></div>
-            <div class="spell"><img src="assets/spells/lightning.png" alt="Lightning spell pattern" /><b>Lightning</b><span>2-4-5-6-8</span></div>
-            <div class="spell"><img src="assets/spells/earth.png" alt="Earth spell pattern" /><b>Earth</b><span>4-5-6-9-8-7-4</span></div>
-          </div>
+          <div class="spell-list" aria-label="Known spells"></div>
         </details>
       </div>
     </section>
@@ -1009,6 +989,7 @@
     </section>
   </main>
 
+  <script src="assets/game-core.js"></script>
   <script>
     const lobby = document.getElementById("lobby");
     const game = document.getElementById("game");
@@ -1053,6 +1034,8 @@
     const pathLayer = document.getElementById("pathLayer");
     const patternText = document.getElementById("patternText");
     const resultText = document.getElementById("resultText");
+    const spellCycle = document.querySelector(".spell-cycle");
+    const spellList = document.querySelector(".spell-list");
 
     const positions = {
       1: [22, 22], 2: [50, 22], 3: [78, 22],
@@ -1060,68 +1043,21 @@
       7: [22, 78], 8: [50, 78], 9: [78, 78],
     };
 
-    const spells = [
-      {
-        id: "flame1",
-        name: "Flame",
-        level: 1,
-        color: "#ff6a2a",
-        sequence: [7, 2, 9, 5, 7],
-      },
-      {
-        id: "frost1",
-        name: "Frost",
-        level: 1,
-        color: "#79d7ff",
-        sequence: [2, 4, 8, 6, 2],
-      },
-      {
-        id: "storm1",
-        name: "Storm",
-        level: 1,
-        color: "#ffd25f",
-        sequence: [9, 8, 7, 4, 1, 2, 3, 6, 5],
-      },
-      {
-        id: "water1",
-        name: "Water",
-        level: 1,
-        color: "#4fb7ff",
-        sequence: [7, 4, 5, 6, 9, 5, 7],
-      },
-      {
-        id: "lightning1",
-        name: "Lightning",
-        level: 1,
-        color: "#f6ff5b",
-        sequence: [2, 4, 5, 6, 8],
-      },
-      {
-        id: "earth1",
-        name: "Earth",
-        level: 1,
-        color: "#88d071",
-        sequence: [4, 5, 6, 9, 8, 7, 4],
-      },
-    ].map((spell) => ({ ...spell, edges: edgeBag(spell.sequence) }));
-
-    const STARTING_LIFE = 10;
-    const elementImages = {
-      Flame: "assets/elements/flame.jpeg",
-      Frost: "assets/elements/frost.jpeg",
-      Storm: "assets/elements/storm.jpeg",
-      Water: "assets/elements/water.jpeg",
-      Lightning: "assets/elements/lightning.jpeg",
-      Earth: "assets/elements/earth.jpeg",
-    };
-    const BEATS = {
-      Flame: new Set(["Frost", "Water"]),
-      Frost: new Set(["Water", "Lightning"]),
-      Water: new Set(["Lightning", "Storm"]),
-      Lightning: new Set(["Storm", "Earth"]),
-      Storm: new Set(["Earth", "Flame"]),
-      Earth: new Set(["Flame", "Frost"]),
-    };
+    const GAME_CORE = window.GAME_CORE;
+    const GAME_CONFIG = GAME_CORE.config || {};
+    const STARTING_LIFE = Number(GAME_CONFIG.startingLife) || 10;
+    const ROUND_SECONDS = Number(GAME_CONFIG.roundSeconds) || 5;
+    const PENALTIES = GAME_CONFIG.penalties || { miscast: 1, timeout: 2 };
+    const spells = (GAME_CORE.spells || []).map((spell) => ({
+      ...spell,
+      sequence: spell.pattern,
+      edges: edgeBag(spell.pattern),
+    }));
+    const spellMap = Object.fromEntries(spells.map((spell) => [spell.name, spell]));
+    const elementImages = Object.fromEntries(spells.map((spell) => [spell.name, spell.elementImage]));
+    const BEATS = Object.fromEntries(
+      Object.entries(GAME_CORE.matchups || {}).map(([spell, beaten]) => [spell, new Set(beaten)])
+    );
     const failedSpellImage = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'%3E%3Crect width='120' height='120' fill='%23100f0d'/%3E%3Ccircle cx='60' cy='60' r='42' fill='none' stroke='%23ff3b4f' stroke-width='5' stroke-dasharray='10 8'/%3E%3Cpath d='M38 38l44 44M82 38L38 82' stroke='%23ffd166' stroke-width='8' stroke-linecap='round'/%3E%3C/svg%3E";
     let sequence = [];
     let drawing = false;
@@ -1177,6 +1113,37 @@
         if ((source[key] || 0) !== (target[key] || 0)) return false;
       }
       return true;
+    }
+
+    function patternLabel(spell) {
+      return (spell.pattern || spell.sequence || []).join("-");
+    }
+
+    function beatsLabel(spellName) {
+      const beaten = GAME_CORE.matchups && GAME_CORE.matchups[spellName] ? GAME_CORE.matchups[spellName] : [];
+      return beaten.length ? `beats ${beaten.join(", ")}` : "cancels only";
+    }
+
+    function hydrateCoreUi() {
+      practiceSpellSelect.innerHTML = spells
+        .map((spell) => `<option value="${spell.name}">${spell.name}</option>`)
+        .join("");
+
+      spellCycle.querySelectorAll(".cycle-node").forEach((node) => node.remove());
+      (GAME_CORE.wheel || spells.map((spell) => spell.name)).forEach((name) => {
+        const spell = spellMap[name];
+        if (!spell) return;
+        const node = document.createElement("div");
+        node.className = `cycle-node cycle-${name.toLowerCase()}`;
+        node.innerHTML = `<img src="${spell.spellImage}" alt="${name} spell pattern" /><b>${name}</b><span>${beatsLabel(name)}</span>`;
+        spellCycle.appendChild(node);
+      });
+
+      spellList.innerHTML = spells
+        .map((spell) => `<div class="spell"><img src="${spell.spellImage}" alt="${spell.name} spell pattern" /><b>${spell.name}</b><span>${patternLabel(spell)}</span></div>`)
+        .join("");
+
+      timerText.textContent = `${ROUND_SECONDS.toFixed(1)}s`;
     }
 
     function scorePattern(seq) {
@@ -1323,8 +1290,14 @@
       const s1 = playerSubmission.status;
       const s2 = aiSubmission.status;
       if (s1 !== "valid" && s2 !== "valid") return { loser: "", penalty: 0, message: "Both failed. Draw." };
-      if (s1 === "valid" && s2 !== "valid") return { loser: "ai", penalty: s2 === "timeout" ? 2 : 1, message: `${playerSubmission.spell} wins. AI loses ${s2 === "timeout" ? 2 : 1} life.` };
-      if (s2 === "valid" && s1 !== "valid") return { loser: "player", penalty: s1 === "timeout" ? 2 : 1, message: `${aiSubmission.spell} wins. Player 1 loses ${s1 === "timeout" ? 2 : 1} life.` };
+      if (s1 === "valid" && s2 !== "valid") {
+        const penalty = s2 === "timeout" ? PENALTIES.timeout : PENALTIES.miscast;
+        return { loser: "ai", penalty, message: `${playerSubmission.spell} wins. AI loses ${penalty} life.` };
+      }
+      if (s2 === "valid" && s1 !== "valid") {
+        const penalty = s1 === "timeout" ? PENALTIES.timeout : PENALTIES.miscast;
+        return { loser: "player", penalty, message: `${aiSubmission.spell} wins. Player 1 loses ${penalty} life.` };
+      }
       if (playerSubmission.spell === aiSubmission.spell) return { loser: "", penalty: 0, message: `Both cast ${playerSubmission.spell}. Draw.` };
       if (BEATS[playerSubmission.spell] && BEATS[playerSubmission.spell].has(aiSubmission.spell)) return { loser: "ai", penalty: 1, message: `${playerSubmission.spell} beats ${aiSubmission.spell}. AI loses 1 life.` };
       if (BEATS[aiSubmission.spell] && BEATS[aiSubmission.spell].has(playerSubmission.spell)) return { loser: "player", penalty: 1, message: `${aiSubmission.spell} beats ${playerSubmission.spell}. Player 1 loses 1 life.` };
@@ -1388,7 +1361,7 @@
       stopLocalTimers();
       pveRound += 1;
       pveSubmitted = false;
-      pveDeadline = Date.now() / 1000 + 5;
+      pveDeadline = Date.now() / 1000 + ROUND_SECONDS;
       currentRoundId = pveRound;
       submittedRoundId = 0;
       attemptedRoundId = 0;
@@ -1398,7 +1371,7 @@
       resultText.textContent = pveLevel === 1 ? "Choose a spell." : `Round ${pveRound}.`;
       matchLog.textContent = pveLevel === 1 ? "Choose one spell before time ends." : "Draw one spell before time ends.";
       roundLabel.textContent = `Round ${pveRound}`;
-      timerText.textContent = "5.0s";
+      timerText.textContent = `${ROUND_SECONDS.toFixed(1)}s`;
       timerFill.style.width = "100%";
       if (pveLevel === 1) {
         game.classList.add("pve-card-on");
@@ -1415,7 +1388,7 @@
       if (!pveMode || duel.matchOver) return;
       const left = Math.max(0, pveDeadline - Date.now() / 1000);
       timerText.textContent = `${left.toFixed(1)}s`;
-      timerFill.style.width = `${Math.max(0, Math.min(100, (left / 5) * 100))}%`;
+      timerFill.style.width = `${Math.max(0, Math.min(100, (left / ROUND_SECONDS) * 100))}%`;
       if (!pveSubmitted) {
         matchLog.textContent = `${pveLevelName()} - ${left.toFixed(1)}s. ${pveLevel === 1 ? "Choose now." : "Draw now."}`;
       }
@@ -1584,7 +1557,7 @@
       if ((latestState.roomUsers || 0) < 2) {
         matchLog.textContent = `Room ${latestState.room} ready. Waiting for rival.`;
         roundLabel.textContent = "Waiting";
-        timerText.textContent = "5.0s";
+        timerText.textContent = `${ROUND_SECONDS.toFixed(1)}s`;
         timerFill.style.width = "0%";
         return;
       }
@@ -1597,7 +1570,7 @@
         return;
       }
       const left = roundRemaining();
-      const total = latestState.rules ? latestState.rules.roundSeconds : 5;
+      const total = latestState.rules ? latestState.rules.roundSeconds : ROUND_SECONDS;
       const percent = Math.max(0, Math.min(100, (left / total) * 100));
       const submitText = latestState.round.youSubmitted || submittedRoundId === latestState.round.id ? "Spell locked." : "Draw now.";
       roundLabel.textContent = `Round ${latestState.round.id}`;
@@ -1960,6 +1933,7 @@
     }, { capture: true });
     playerNameInput.value = localStorage.getItem("arcanePlayerName") || "Mage";
     playerNameInput.addEventListener("input", playerName);
+    hydrateCoreUi();
     refreshRooms();
 
     makeDots();

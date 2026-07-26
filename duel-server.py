@@ -2,24 +2,32 @@ from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
 from pathlib import Path
 import json
 import os
+import re
 import time
 import urllib.parse
 
 
 ROOT = Path(__file__).resolve().parent
-STARTING_LIFE = 10
-ROUND_SECONDS = 5
-CONNECTION_TIMEOUT = 90
-rooms = {}
 
-BEATS = {
-    "Flame": {"Frost", "Water"},
-    "Frost": {"Water", "Lightning"},
-    "Water": {"Lightning", "Storm"},
-    "Lightning": {"Storm", "Earth"},
-    "Storm": {"Earth", "Flame"},
-    "Earth": {"Flame", "Frost"},
-}
+
+def load_game_core():
+    text = (ROOT / "assets" / "game-core.js").read_text(encoding="utf-8")
+    match = re.search(r"window\.GAME_CORE\s*=\s*(\{.*\})\s*;", text, re.S)
+    if not match:
+        raise RuntimeError("assets/game-core.js must assign window.GAME_CORE")
+    return json.loads(match.group(1))
+
+
+GAME_CORE = load_game_core()
+CONFIG = GAME_CORE.get("config", {})
+STARTING_LIFE = int(CONFIG.get("startingLife", 10))
+ROUND_SECONDS = float(CONFIG.get("roundSeconds", 5))
+CONNECTION_TIMEOUT = float(CONFIG.get("connectionTimeout", 90))
+PENALTIES = CONFIG.get("penalties", {})
+MISCAST_PENALTY = int(PENALTIES.get("miscast", 1))
+TIMEOUT_PENALTY = int(PENALTIES.get("timeout", 2))
+BEATS = {spell: set(beaten) for spell, beaten in GAME_CORE.get("matchups", {}).items()}
+rooms = {}
 
 
 def new_room(code):
@@ -109,10 +117,10 @@ def round_result(p1, p2):
     if s1 != "valid" and s2 != "valid":
         return None, 0, "Both failed. Draw."
     if s1 == "valid" and s2 != "valid":
-        penalty = 2 if s2 == "timeout" else 1
+        penalty = TIMEOUT_PENALTY if s2 == "timeout" else MISCAST_PENALTY
         return "p2", penalty, f"{p1['spell']} wins. Player 2 loses {penalty} life."
     if s2 == "valid" and s1 != "valid":
-        penalty = 2 if s1 == "timeout" else 1
+        penalty = TIMEOUT_PENALTY if s1 == "timeout" else MISCAST_PENALTY
         return "p1", penalty, f"{p2['spell']} wins. Player 1 loses {penalty} life."
     if p1["spell"] == p2["spell"]:
         return None, 0, f"Both cast {p1['spell']}. Draw."
@@ -293,6 +301,12 @@ class DuelHandler(SimpleHTTPRequestHandler):
                 "startingLife": STARTING_LIFE,
                 "roundSeconds": ROUND_SECONDS,
                 "beats": {spell: sorted(beats) for spell, beats in BEATS.items()},
+                "wheel": GAME_CORE.get("wheel", []),
+                "spells": GAME_CORE.get("spells", []),
+                "penalties": {
+                    "miscast": MISCAST_PENALTY,
+                    "timeout": TIMEOUT_PENALTY,
+                },
             },
         }
 
