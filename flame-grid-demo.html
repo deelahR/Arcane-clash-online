@@ -689,6 +689,23 @@
       border: 2px dashed rgba(255, 209, 102, 0.42);
     }
 
+    .cycle-links {
+      position: absolute;
+      inset: 12%;
+      width: 76%;
+      height: 76%;
+      overflow: visible;
+      pointer-events: none;
+    }
+
+    .cycle-links path {
+      fill: none;
+      stroke: rgba(255, 209, 102, 0.78);
+      stroke-width: 3.2;
+      stroke-linecap: round;
+      filter: drop-shadow(0 0 7px rgba(255, 145, 47, 0.48));
+    }
+
     .cycle-node {
       position: absolute;
       width: 25%;
@@ -882,6 +899,19 @@
           <summary class="btn guide-toggle">Spell Guide <span>Open</span></summary>
           <div class="spell-cycle" aria-label="Spell strength cycle">
             <div class="cycle-arrow"></div>
+            <svg class="cycle-links" viewBox="0 0 100 100" aria-hidden="true">
+              <defs>
+                <marker id="cycleArrowHead" markerWidth="8" markerHeight="8" refX="6.8" refY="4" orient="auto" markerUnits="strokeWidth">
+                  <path d="M0,0 L8,4 L0,8 Z" fill="#ffd166"></path>
+                </marker>
+              </defs>
+              <path d="M50 12 Q69 17 82 34" marker-end="url(#cycleArrowHead)"></path>
+              <path d="M86 42 Q91 55 82 70" marker-end="url(#cycleArrowHead)"></path>
+              <path d="M76 78 Q63 89 50 88" marker-end="url(#cycleArrowHead)"></path>
+              <path d="M44 88 Q29 85 18 70" marker-end="url(#cycleArrowHead)"></path>
+              <path d="M14 62 Q10 48 18 30" marker-end="url(#cycleArrowHead)"></path>
+              <path d="M24 22 Q37 11 50 12" marker-end="url(#cycleArrowHead)"></path>
+            </svg>
             <div class="cycle-core">Beats next 2</div>
             <div class="cycle-node cycle-flame"><img src="assets/spells/flame.png" alt="Flame spell pattern" /><b>Flame</b><span>beats Frost, Water</span></div>
             <div class="cycle-node cycle-frost"><img src="assets/spells/frost.png" alt="Frost spell pattern" /><b>Frost</b><span>beats Water, Lightning</span></div>
