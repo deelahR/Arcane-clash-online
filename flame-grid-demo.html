@@ -104,6 +104,65 @@
       margin-top: 12px;
     }
 
+    .lobby-grid {
+      display: grid;
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .lobby-section {
+      border: 1px solid var(--line);
+      background: #12100d;
+      border-radius: 8px;
+      padding: 12px;
+    }
+
+    .lobby-section h2 {
+      margin: 0 0 8px;
+      font-size: 0.98rem;
+      line-height: 1.15;
+    }
+
+    .lobby-section .row {
+      margin-top: 8px;
+    }
+
+    .big-actions {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .choice-card {
+      border: 1px solid #5b4b39;
+      background: #17130f;
+      border-radius: 8px;
+      padding: 10px;
+      display: grid;
+      gap: 8px;
+    }
+
+    .choice-card b {
+      font-size: 0.94rem;
+    }
+
+    .choice-card .btn {
+      width: 100%;
+    }
+
+    .guide-toggle {
+      width: 100%;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      text-align: left;
+      margin-top: 8px;
+    }
+
+    .spell-guide[open] .guide-toggle {
+      margin-bottom: 10px;
+    }
+
     input, select {
       flex: 1 1 150px;
       min-width: 0;
@@ -150,9 +209,16 @@
       text-align: left;
     }
 
+    .room-card b {
+      display: block;
+      font-size: 1rem;
+    }
+
     .room-card span {
       color: var(--muted);
       font-size: 0.84rem;
+      display: block;
+      margin-top: 2px;
     }
 
     .room-actions {
@@ -673,6 +739,7 @@
         justify-content: flex-end;
       }
       .hud { grid-template-columns: 1fr 1fr; }
+      .big-actions { grid-template-columns: 1fr; }
       .round-panel { grid-template-columns: 1fr; }
       .battle-reveal { padding: 10px; }
       .versus { gap: 6px; }
@@ -699,50 +766,68 @@
       <div class="top">
         <div>
           <h1>Arcane Clash</h1>
-          <p class="sub">Fixed seal duel prototype</p>
+          <p class="sub">Magic spell duel</p>
         </div>
       </div>
-      <div class="row">
-        <input id="playerNameInput" maxlength="18" value="Mage" aria-label="Player name" />
-      </div>
-      <div class="row">
-        <input id="roomInput" maxlength="8" value="ARCANE" aria-label="Room code" />
-        <button class="btn primary" id="hostBtn">Create Room</button>
-        <button class="btn" id="joinBtn">Join Code</button>
-      </div>
-      <div class="row">
-        <select id="practiceSpellSelect" aria-label="Practice spell">
-          <option value="Flame">Flame practice</option>
-          <option value="Frost">Frost practice</option>
-          <option value="Storm">Storm practice</option>
-          <option value="Water">Water practice</option>
-          <option value="Lightning">Lightning practice</option>
-          <option value="Earth">Earth practice</option>
-        </select>
-        <button class="btn" id="practiceBtn">Practice Drawing</button>
-      </div>
-      <div class="note" id="lobbyCount">Players: 0/2 in room - Online: 0</div>
-      <div class="note" id="duelLog">Ready.</div>
-      <div class="rooms" id="roomList" aria-label="Open rooms"></div>
+      <div class="lobby-grid">
+        <section class="lobby-section">
+          <h2>Your Name</h2>
+          <input id="playerNameInput" maxlength="18" value="Mage" aria-label="Player name" />
+        </section>
 
-      <div class="spell-cycle" aria-label="Spell strength cycle">
-        <div class="cycle-arrow"></div>
-        <div class="cycle-core">Strength follows the circle</div>
-        <div class="cycle-node cycle-flame"><img src="assets/spells/flame.png" alt="Flame spell pattern" /><b>Flame</b><span>beats Frost</span></div>
-        <div class="cycle-node cycle-frost"><img src="assets/spells/frost.png" alt="Frost spell pattern" /><b>Frost</b><span>beats Storm</span></div>
-        <div class="cycle-node cycle-storm"><img src="assets/spells/storm.png" alt="Storm spell pattern" /><b>Storm</b><span>beats Lightning</span></div>
-        <div class="cycle-node cycle-lightning"><img src="assets/spells/lightning.png" alt="Lightning spell pattern" /><b>Lightning</b><span>beats Earth</span></div>
-        <div class="cycle-node cycle-earth"><img src="assets/spells/earth.png" alt="Earth spell pattern" /><b>Earth</b><span>beats Water</span></div>
-        <div class="cycle-node cycle-water"><img src="assets/spells/water.png" alt="Water spell pattern" /><b>Water</b><span>beats Flame</span></div>
-      </div>
+        <div class="big-actions">
+          <section class="choice-card">
+            <b>Practice</b>
+            <select id="practiceSpellSelect" aria-label="Practice spell">
+              <option value="Flame">Flame</option>
+              <option value="Frost">Frost</option>
+              <option value="Storm">Storm</option>
+              <option value="Water">Water</option>
+              <option value="Lightning">Lightning</option>
+              <option value="Earth">Earth</option>
+            </select>
+            <button class="btn primary" id="practiceBtn">Practice Drawing</button>
+          </section>
 
-      <div class="spell-list" aria-label="Known spells">
-        <div class="spell"><img src="assets/spells/flame.png" alt="Flame spell pattern" /><b>Flame</b><span>7-2-9-5-7</span></div>
-        <div class="spell"><img src="assets/spells/frost.png" alt="Frost spell pattern" /><b>Frost</b><span>2-4-8-6-2</span></div>
-        <div class="spell"><img src="assets/spells/storm.png" alt="Storm spell pattern" /><b>Storm</b><span>9-8-7-4-1-2-3-6-5</span></div>
-        <div class="spell"><img src="assets/spells/water.png" alt="Water spell pattern" /><b>Water</b><span>7-4-5-6-9-5-7</span></div>
-        <div class="spell"><img src="assets/spells/lightning.png" alt="Lightning spell pattern" /><b>Lightning</b><span>2-4-5-6-8</span></div>
-        <div class="spell"><img src="assets/spells/earth.png" alt="Earth spell pattern" /><b>Earth</b><span>4-5-6-9-8-7-4</span></div>
+          <section class="choice-card">
+            <b>Online Duel</b>
+            <input id="roomInput" maxlength="8" value="ARCANE" aria-label="Room code" />
+            <div class="row">
+              <button class="btn primary" id="hostBtn">Create Room</button>
+              <button class="btn" id="joinBtn">Join Code</button>
+            </div>
+          </section>
+        </div>
+
+        <section class="lobby-section">
+          <h2>Open Rooms</h2>
+          <div class="note" id="lobbyCount">Open rooms: 0 - Online: 0</div>
+          <div class="note" id="duelLog">Ready.</div>
+          <div class="rooms" id="roomList" aria-label="Open rooms"></div>
+        </section>
+
+        <details class="lobby-section spell-guide">
+          <summary class="btn guide-toggle">Spell Guide <span>Open</span></summary>
+          <div class="spell-cycle" aria-label="Spell strength cycle">
+            <div class="cycle-arrow"></div>
+            <div class="cycle-core">Strength follows the circle</div>
+            <div class="cycle-node cycle-flame"><img src="assets/spells/flame.png" alt="Flame spell pattern" /><b>Flame</b><span>beats Frost</span></div>
+            <div class="cycle-node cycle-frost"><img src="assets/spells/frost.png" alt="Frost spell pattern" /><b>Frost</b><span>beats Storm</span></div>
+            <div class="cycle-node cycle-storm"><img src="assets/spells/storm.png" alt="Storm spell pattern" /><b>Storm</b><span>beats Lightning</span></div>
+            <div class="cycle-node cycle-lightning"><img src="assets/spells/lightning.png" alt="Lightning spell pattern" /><b>Lightning</b><span>beats Earth</span></div>
+            <div class="cycle-node cycle-earth"><img src="assets/spells/earth.png" alt="Earth spell pattern" /><b>Earth</b><span>beats Water</span></div>
+            <div class="cycle-node cycle-water"><img src="assets/spells/water.png" alt="Water spell pattern" /><b>Water</b><span>beats Flame</span></div>
+          </div>
+
+          <div class="spell-list" aria-label="Known spells">
+            <div class="spell"><img src="assets/spells/flame.png" alt="Flame spell pattern" /><b>Flame</b><span>7-2-9-5-7</span></div>
+            <div class="spell"><img src="assets/spells/frost.png" alt="Frost spell pattern" /><b>Frost</b><span>2-4-8-6-2</span></div>
+            <div class="spell"><img src="assets/spells/storm.png" alt="Storm spell pattern" /><b>Storm</b><span>9-8-7-4-1-2-3-6-5</span></div>
+            <div class="spell"><img src="assets/spells/water.png" alt="Water spell pattern" /><b>Water</b><span>7-4-5-6-9-5-7</span></div>
+            <div class="spell"><img src="assets/spells/lightning.png" alt="Lightning spell pattern" /><b>Lightning</b><span>2-4-5-6-8</span></div>
+            <div class="spell"><img src="assets/spells/earth.png" alt="Earth spell pattern" /><b>Earth</b><span>4-5-6-9-8-7-4</span></div>
+          </div>
+        </details>
       </div>
     </section>
 
@@ -1114,7 +1199,7 @@
         item.className = "room-card";
         const canDelete = owned.has(room.code) || room.users === 0;
         item.innerHTML = `
-          <div><b>${room.code}</b><span>${room.users}/2 ${room.open ? "open" : "busy"} · ${room.host || "Player 1"}</span></div>
+          <div><b>Room ${room.code}</b><span>${room.users}/2 players · Host: ${room.host || "Player 1"} · ${room.open ? "Open" : "Full"}</span></div>
           <div class="room-actions">
             <button class="btn" type="button" ${room.open ? "" : "disabled"}>Join</button>
             ${canDelete ? '<button class="btn" type="button" data-delete="1">Delete</button>' : ""}
