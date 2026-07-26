@@ -649,18 +649,64 @@
       100% { transform: scale(1); opacity: 0.92; }
     }
 
-    .spell-list {
+    .guide-layout {
+      display: grid;
+      grid-template-columns: minmax(280px, 0.9fr) minmax(260px, 1.1fr);
+      gap: 14px;
+      align-items: center;
+      margin-top: 12px;
+    }
+
+    .guide-side {
+      display: grid;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    .guide-rules {
       display: grid;
       grid-template-columns: repeat(3, minmax(0, 1fr));
       gap: 8px;
-      margin-top: 10px;
+    }
+
+    .guide-rule {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #12100d;
+      padding: 8px;
+      min-width: 0;
+    }
+
+    .guide-rule b,
+    .guide-rule span {
+      display: block;
+    }
+
+    .guide-rule b {
+      color: #ffd166;
+      font-size: 0.86rem;
+      line-height: 1.05;
+    }
+
+    .guide-rule span {
+      color: var(--muted);
+      font-size: 0.68rem;
+      margin-top: 3px;
+      overflow-wrap: anywhere;
+    }
+
+    .spell-list {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
     }
 
     .spell-cycle {
       position: relative;
-      width: min(92vw, 460px);
+      width: 100%;
+      max-width: 390px;
       aspect-ratio: 1;
-      margin: 12px auto 0;
+      margin: 0 auto;
       border: 1px solid var(--line);
       border-radius: 50%;
       background:
@@ -670,13 +716,13 @@
 
     .cycle-core {
       position: absolute;
-      inset: 37%;
+      inset: 36%;
       border-radius: 50%;
       display: grid;
       place-items: center;
       border: 1px solid #725f45;
       color: #ffd166;
-      font-size: 0.82rem;
+      font-size: 0.76rem;
       font-weight: 900;
       text-align: center;
       padding: 8px;
@@ -708,8 +754,8 @@
 
     .cycle-node {
       position: absolute;
-      width: 25%;
-      min-width: 86px;
+      width: 23%;
+      min-width: 74px;
       transform: translate(-50%, -50%);
       border: 1px solid var(--line);
       border-radius: 8px;
@@ -721,7 +767,7 @@
     .cycle-node img {
       display: block;
       width: 100%;
-      aspect-ratio: 1.18;
+      aspect-ratio: 1.25;
       object-fit: cover;
     }
 
@@ -733,12 +779,12 @@
 
     .cycle-node b {
       padding-top: 4px;
-      font-size: 0.74rem;
+      font-size: 0.7rem;
     }
 
     .cycle-node span {
       color: var(--muted);
-      font-size: 0.65rem;
+      font-size: 0.6rem;
       padding-bottom: 5px;
       white-space: nowrap;
     }
@@ -755,15 +801,19 @@
       border-radius: 8px;
       background: #12100d;
       overflow: hidden;
+      display: grid;
+      grid-template-columns: 54px minmax(0, 1fr);
+      align-items: stretch;
     }
 
     .spell img {
       display: block;
       width: 100%;
-      aspect-ratio: 1.2;
+      height: 100%;
+      min-height: 68px;
       object-fit: cover;
       object-position: center;
-      border-bottom: 1px solid var(--line);
+      border-right: 1px solid var(--line);
     }
 
     .spell b,
@@ -779,9 +829,14 @@
 
     .spell span {
       color: var(--muted);
-      font-size: 0.72rem;
-      padding-bottom: 7px;
+      font-size: 0.68rem;
+      padding-bottom: 3px;
       overflow-wrap: anywhere;
+    }
+
+    .spell .spell-win {
+      color: #ffd166;
+      padding-bottom: 7px;
     }
 
     .match-over .seal {
@@ -828,9 +883,11 @@
         margin: -23px 0 0 -23px;
       }
       .draw-line { stroke-width: 11; }
-      .spell-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .guide-layout { grid-template-columns: 1fr; }
+      .guide-rules { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      .spell-list { grid-template-columns: 1fr; }
       .cycle-node {
-        width: 30%;
+        width: 26%;
         min-width: 72px;
       }
       .cycle-node span { display: none; }
@@ -890,25 +947,29 @@
 
         <details class="lobby-section spell-guide">
           <summary class="btn guide-toggle">Spell Guide <span>Open</span></summary>
-          <div class="spell-cycle" aria-label="Spell strength cycle">
-            <div class="cycle-arrow"></div>
-            <svg class="cycle-links" viewBox="0 0 100 100" aria-hidden="true">
-              <defs>
-                <marker id="cycleArrowHead" markerWidth="8" markerHeight="8" refX="6.8" refY="4" orient="auto" markerUnits="strokeWidth">
-                  <path d="M0,0 L8,4 L0,8 Z" fill="#ffd166"></path>
-                </marker>
-              </defs>
-              <path d="M50 12 Q69 17 82 34" marker-end="url(#cycleArrowHead)"></path>
-              <path d="M86 42 Q91 55 82 70" marker-end="url(#cycleArrowHead)"></path>
-              <path d="M76 78 Q63 89 50 88" marker-end="url(#cycleArrowHead)"></path>
-              <path d="M44 88 Q29 85 18 70" marker-end="url(#cycleArrowHead)"></path>
-              <path d="M14 62 Q10 48 18 30" marker-end="url(#cycleArrowHead)"></path>
-              <path d="M24 22 Q37 11 50 12" marker-end="url(#cycleArrowHead)"></path>
-            </svg>
-            <div class="cycle-core">Beats next 2</div>
+          <div class="guide-layout">
+            <div class="spell-cycle" aria-label="Spell strength cycle">
+              <div class="cycle-arrow"></div>
+              <svg class="cycle-links" viewBox="0 0 100 100" aria-hidden="true">
+                <defs>
+                  <marker id="cycleArrowHead" markerWidth="8" markerHeight="8" refX="6.8" refY="4" orient="auto" markerUnits="strokeWidth">
+                    <path d="M0,0 L8,4 L0,8 Z" fill="#ffd166"></path>
+                  </marker>
+                </defs>
+                <path d="M50 12 Q69 17 82 34" marker-end="url(#cycleArrowHead)"></path>
+                <path d="M86 42 Q91 55 82 70" marker-end="url(#cycleArrowHead)"></path>
+                <path d="M76 78 Q63 89 50 88" marker-end="url(#cycleArrowHead)"></path>
+                <path d="M44 88 Q29 85 18 70" marker-end="url(#cycleArrowHead)"></path>
+                <path d="M14 62 Q10 48 18 30" marker-end="url(#cycleArrowHead)"></path>
+                <path d="M24 22 Q37 11 50 12" marker-end="url(#cycleArrowHead)"></path>
+              </svg>
+              <div class="cycle-core">Beats next 2</div>
+            </div>
+            <div class="guide-side">
+              <div class="guide-rules" id="guideRules"></div>
+              <div class="spell-list" aria-label="Known spells"></div>
+            </div>
           </div>
-
-          <div class="spell-list" aria-label="Known spells"></div>
         </details>
       </div>
     </section>
@@ -1036,6 +1097,7 @@
     const resultText = document.getElementById("resultText");
     const spellCycle = document.querySelector(".spell-cycle");
     const spellList = document.querySelector(".spell-list");
+    const guideRules = document.getElementById("guideRules");
 
     const positions = {
       1: [22, 22], 2: [50, 22], 3: [78, 22],
@@ -1129,6 +1191,14 @@
         .map((spell) => `<option value="${spell.name}">${spell.name}</option>`)
         .join("");
 
+      guideRules.innerHTML = [
+        ["Wheel", "beats next 2"],
+        [`${ROUND_SECONDS}s`, "round timer"],
+        [`-${PENALTIES.timeout}`, "timeout loss"],
+      ]
+        .map(([title, text]) => `<div class="guide-rule"><b>${title}</b><span>${text}</span></div>`)
+        .join("");
+
       spellCycle.querySelectorAll(".cycle-node").forEach((node) => node.remove());
       (GAME_CORE.wheel || spells.map((spell) => spell.name)).forEach((name) => {
         const spell = spellMap[name];
@@ -1140,7 +1210,7 @@
       });
 
       spellList.innerHTML = spells
-        .map((spell) => `<div class="spell"><img src="${spell.spellImage}" alt="${spell.name} spell pattern" /><b>${spell.name}</b><span>${patternLabel(spell)}</span></div>`)
+        .map((spell) => `<div class="spell"><img src="${spell.spellImage}" alt="${spell.name} spell pattern" /><div><b>${spell.name}</b><span>${patternLabel(spell)}</span><span class="spell-win">${beatsLabel(spell.name)}</span></div></div>`)
         .join("");
 
       timerText.textContent = `${ROUND_SECONDS.toFixed(1)}s`;
