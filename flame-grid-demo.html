@@ -910,6 +910,15 @@
       grid-template-columns: 1fr;
     }
 
+    .next-practice {
+      display: none;
+    }
+
+    .practice-on .next-practice {
+      display: inline-flex;
+      align-items: center;
+    }
+
     @media (max-width: 560px) {
       body { padding: 8px; }
       .app { padding: 10px; }
@@ -1139,7 +1148,7 @@
       </section>
 
       <div class="row">
-        <button class="btn" id="clearBtn">Clear</button>
+        <button class="btn primary next-practice" id="nextPracticeSpellBtn">Next Spell</button>
       </div>
     </section>
   </main>
@@ -1162,7 +1171,7 @@
     const pveBtn = document.getElementById("pveBtn");
     const leaveBtn = document.getElementById("leaveBtn");
     const deleteRoomBtn = document.getElementById("deleteRoomBtn");
-    const clearBtn = document.getElementById("clearBtn");
+    const nextPracticeSpellBtn = document.getElementById("nextPracticeSpellBtn");
     const roomList = document.getElementById("roomList");
     const lobbyCount = document.getElementById("lobbyCount");
     const duelLog = document.getElementById("duelLog");
@@ -2000,6 +2009,24 @@
       });
     }
 
+    function updatePracticeSpell(spellName) {
+      practiceSpell = spellName || practiceSpellSelect.value || "Flame";
+      practiceSpellSelect.value = practiceSpell;
+      if (!practiceMode) return;
+      roleBadge.textContent = `${practiceSpell} drawing`;
+      matchLog.textContent = `Practice ${practiceSpell}. Draw the approved pattern.`;
+      renderPracticeTrace();
+      clearPattern(false);
+    }
+
+    function nextPracticeSpell() {
+      const options = Array.from(practiceSpellSelect.options);
+      if (!options.length) return;
+      const current = Math.max(0, options.findIndex((option) => option.value === practiceSpellSelect.value));
+      const next = options[(current + 1) % options.length];
+      updatePracticeSpell(next.value);
+    }
+
     function renderPath(stateClass = "") {
       pathLayer.innerHTML = "";
       const color = lastResult ? lastResult.spell.color : lastColor;
@@ -2128,16 +2155,8 @@
 
     seal.addEventListener("pointerup", finishPattern);
     seal.addEventListener("pointercancel", finishPattern);
-    clearBtn.addEventListener("click", clearPattern);
-    practiceSpellSelect.addEventListener("change", () => {
-      practiceSpell = practiceSpellSelect.value || "Flame";
-      if (practiceMode) {
-        roleBadge.textContent = `${practiceSpell} drawing`;
-        matchLog.textContent = `Practice ${practiceSpell}. Draw the approved pattern.`;
-        renderPracticeTrace();
-        clearPattern(false);
-      }
-    });
+    nextPracticeSpellBtn.addEventListener("click", nextPracticeSpell);
+    practiceSpellSelect.addEventListener("change", () => updatePracticeSpell(practiceSpellSelect.value || "Flame"));
     modeCards.forEach((card) => card.addEventListener("click", () => openLobbyPanel(card.dataset.panel)));
     panelBackBtns.forEach((button) => button.addEventListener("click", showLobbyHome));
     hostBtn.addEventListener("click", () => connectDuel("host"));
