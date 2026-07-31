@@ -440,6 +440,33 @@
       animation: castPulse 560ms ease both;
     }
 
+    .trace-line {
+      stroke-width: 7;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      opacity: 0.32;
+      stroke-dasharray: 5 6;
+      filter: drop-shadow(0 0 8px currentColor);
+    }
+
+    .trace-dot {
+      opacity: 0.9;
+      filter: drop-shadow(0 0 8px currentColor);
+    }
+
+    .trace-dot circle {
+      fill: #15120f;
+      stroke-width: 1.6;
+    }
+
+    .trace-dot text {
+      fill: var(--text);
+      font-size: 5px;
+      font-weight: 900;
+      text-anchor: middle;
+      dominant-baseline: central;
+    }
+
     @keyframes castPulse {
       0% { stroke-width: 10; opacity: 0.72; }
       50% { stroke-width: 18; opacity: 1; }
@@ -1086,6 +1113,7 @@
         <svg class="seal-svg" viewBox="0 0 100 100" aria-hidden="true">
           <circle class="ring" cx="50" cy="50" r="38"></circle>
           <circle class="ring inner" cx="50" cy="50" r="19"></circle>
+          <g id="traceLayer"></g>
           <g id="pathLayer"></g>
         </svg>
       </section>
@@ -1162,6 +1190,7 @@
     const rivalRevealName = document.getElementById("rivalRevealName");
     const youRevealSpell = document.getElementById("youRevealSpell");
     const rivalRevealSpell = document.getElementById("rivalRevealSpell");
+    const traceLayer = document.getElementById("traceLayer");
     const pathLayer = document.getElementById("pathLayer");
     const patternText = document.getElementById("patternText");
     const resultText = document.getElementById("resultText");
@@ -1375,6 +1404,7 @@
       duelLog.textContent = message || "Ready.";
       showLobbyHome();
       showDrawPhase();
+      renderPracticeTrace();
       clearPattern();
       refreshRooms();
     }
@@ -1411,6 +1441,7 @@
       resultText.textContent = "Draw when ready.";
       deleteRoomBtn.style.display = "none";
       showDrawPhase();
+      renderPracticeTrace();
       clearPattern(false);
       showGame();
     }
@@ -1506,6 +1537,7 @@
       setLife(youHpText, youHpBar, pvePlayerLife);
       setLife(rivalHpText, rivalHpBar, pveAiLife);
       buildPveSpellButtons();
+      renderPracticeTrace();
       showGame();
       startPveRound();
     }
@@ -1851,6 +1883,7 @@
         pveChoicePanel.classList.remove("phase-on");
         deleteRoomBtn.style.display = duel.player === "p1" ? "" : "none";
         if (role === "host" && duel.player === "p1") saveCreatedRoom(joined.room);
+        renderPracticeTrace();
         showGame();
         updateState(joined);
         if (duel.poll) clearInterval(duel.poll);
@@ -1943,6 +1976,28 @@
       el.setAttribute("class", className);
       el.style.stroke = color;
       return el;
+    }
+
+    function renderPracticeTrace() {
+      traceLayer.innerHTML = "";
+      if (!practiceMode) return;
+      const spell = spellMap[practiceSpell];
+      if (!spell || !spell.sequence) return;
+      const color = spell.color || "#ffd166";
+      for (let i = 1; i < spell.sequence.length; i += 1) {
+        const from = positions[spell.sequence[i - 1]];
+        const to = positions[spell.sequence[i]];
+        if (from && to) traceLayer.appendChild(line(from, to, "trace-line", color));
+      }
+      [...new Set(spell.sequence)].forEach((id) => {
+        const pos = positions[id];
+        if (!pos) return;
+        const marker = document.createElementNS("http://www.w3.org/2000/svg", "g");
+        marker.setAttribute("class", "trace-dot");
+        marker.style.color = color;
+        marker.innerHTML = `<circle cx="${pos[0]}" cy="${pos[1]}" r="4.8" style="stroke:${color}"></circle><text x="${pos[0]}" y="${pos[1]}">${id}</text>`;
+        traceLayer.appendChild(marker);
+      });
     }
 
     function renderPath(stateClass = "") {
@@ -2074,6 +2129,15 @@
     seal.addEventListener("pointerup", finishPattern);
     seal.addEventListener("pointercancel", finishPattern);
     clearBtn.addEventListener("click", clearPattern);
+    practiceSpellSelect.addEventListener("change", () => {
+      practiceSpell = practiceSpellSelect.value || "Flame";
+      if (practiceMode) {
+        roleBadge.textContent = `${practiceSpell} drawing`;
+        matchLog.textContent = `Practice ${practiceSpell}. Draw the approved pattern.`;
+        renderPracticeTrace();
+        clearPattern(false);
+      }
+    });
     modeCards.forEach((card) => card.addEventListener("click", () => openLobbyPanel(card.dataset.panel)));
     panelBackBtns.forEach((button) => button.addEventListener("click", showLobbyHome));
     hostBtn.addEventListener("click", () => connectDuel("host"));
